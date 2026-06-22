@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>studio — pursuix</title>
+<link rel="icon" href="assets/favicon.svg">
+<script src="assets/mammoth.browser.min.js"></script>
+<style>
+:root{
+  --base:#131821; --mantle:#0e131a; --crust:#0a0e14;
+  --surf:#1a212d; --surf2:#222b3a; --line:#28323f;
+  --text:#c6cedb; --sub:#98a3b4; --muted:#697486;
+  --accent:#82aef0; --accent-soft:rgba(130,174,240,.13);
+  --good:#8fcfae; --warn:#e6c07a; --danger:#e58a82;
+  --mono:ui-monospace,"JetBrains Mono","SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--base); color:var(--text); font-family:var(--sans); line-height:1.6; -webkit-font-smoothing:antialiased; }
+button,input,textarea,select{ font:inherit; color:inherit; }
+a{ color:var(--accent); }
+.mono{ font-family:var(--mono); }
+
+/* top bar */
+.bar{ position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  padding:11px clamp(14px,4vw,28px); background:color-mix(in srgb,var(--base) 90%,transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+.bar .brand{ font-family:var(--mono); font-weight:600; display:inline-flex; align-items:center; gap:.5ch; }
+.bar .brand svg{ width:20px; height:20px; }
+.bar .sp{ flex:1; }
+.bar .saved{ font-family:var(--mono); font-size:.7rem; color:var(--muted); letter-spacing:.06em; }
+.tab{ font-family:var(--mono); font-size:.74rem; letter-spacing:.1em; text-transform:uppercase; background:none; border:1px solid transparent; color:var(--sub); padding:7px 12px; border-radius:8px; cursor:pointer; }
+.tab.on{ color:var(--text); border-color:var(--line); background:var(--surf); }
+.act{ font-family:var(--mono); font-size:.76rem; display:inline-flex; align-items:center; gap:.5ch; padding:8px 13px; border-radius:8px; border:1px solid var(--line); background:var(--surf); color:var(--text); cursor:pointer; transition:border-color .15s; }
+.act:hover{ border-color:var(--accent); }
+.act.primary{ background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 45%,transparent); color:var(--accent); }
+.act.ghost{ border-color:transparent; background:none; color:var(--sub); padding:8px 9px; }
+.act.ghost:hover{ color:var(--text); }
+
+.shell{ max-width:880px; margin:0 auto; padding:clamp(20px,5vw,46px) clamp(16px,5vw,28px) 120px; }
+
+/* meta strip */
+.meta{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); gap:12px; margin-bottom:26px; padding-bottom:22px; border-bottom:1px solid var(--line); }
+.meta label{ display:block; font-family:var(--mono); font-size:.64rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:5px; }
+.meta input{ width:100%; background:var(--surf); border:1px solid var(--line); border-radius:8px; padding:9px 11px; font-size:.92rem; }
+.meta input:focus{ outline:none; border-color:var(--accent); }
+.meta .full{ grid-column:1/-1; }
+.meta .hint{ font-family:var(--mono); font-size:.64rem; color:var(--muted); margin-top:5px; }
+
+/* insert row */
+.insert{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+.insert button,.dropzone-btn{ font-family:var(--mono); font-size:.7rem; color:var(--sub); background:var(--surf); border:1px solid var(--line); border-radius:7px; padding:6px 10px; cursor:pointer; }
+.insert button:hover{ color:var(--text); border-color:var(--accent); }
+
+/* title + editor */
+#title{ width:100%; border:0; background:none; font-family:var(--sans); font-weight:700; font-size:clamp(1.8rem,5vw,2.6rem); line-height:1.12; letter-spacing:-.01em; color:var(--text); padding:0; margin:0 0 .3em; resize:none; overflow:hidden; }
+#title:focus{ outline:none; }
+#title::placeholder{ color:var(--muted); }
+#editor{ min-height:46vh; font-size:1.12rem; line-height:1.75; color:var(--text); outline:none; }
+#editor:empty::before{ content:attr(data-ph); color:var(--muted); }
+#editor:focus{ outline:none; }
+#editor p{ margin:0 0 1em; }
+#editor h2{ font-size:1.5rem; font-weight:600; margin:1.3em 0 .35em; color:var(--text); }
+#editor h3{ font-size:1.2rem; font-weight:600; margin:1.1em 0 .3em; color:var(--text); }
+#editor a{ color:var(--accent); text-decoration:underline; }
+#editor strong{ color:var(--text); } #editor ul,#editor ol{ padding-left:1.3em; } #editor li{ margin:.3em 0; }
+#editor blockquote{ margin:1.1em 0; padding-left:18px; border-left:2px solid var(--accent); color:var(--text); }
+#editor pre{ background:var(--crust); border:1px solid var(--line); border-radius:10px; padding:12px 14px; overflow:auto; font-family:var(--mono); font-size:.86rem; }
+#editor :not(pre)>code{ background:var(--surf2); padding:.1em .4em; border-radius:5px; font-family:var(--mono); font-size:.85em; }
+#editor img{ max-width:100%; border:1px solid var(--line); border-radius:10px; }
+#editor hr{ border:0; border-top:1px solid var(--line); margin:2em 0; }
+
+/* floating format toolbar */
+#fmt{ position:fixed; z-index:50; display:none; gap:1px; background:#2b3543; border:1px solid var(--line); border-radius:9px; padding:4px; box-shadow:0 14px 40px -16px rgba(0,0,0,.8); transform:translate(-50%,-115%); }
+#fmt button{ width:34px; height:32px; border:0; background:none; color:#d7dde8; border-radius:6px; cursor:pointer; font-size:.92rem; display:grid; place-items:center; }
+#fmt button:hover{ background:rgba(255,255,255,.08); color:#fff; }
+#fmt b{ font-weight:800; } #fmt i{ font-style:italic; }
+#fmt .sep{ width:1px; background:var(--line); margin:4px 2px; }
+
+/* drag overlay */
+#drop{ position:fixed; inset:0; z-index:60; display:none; place-items:center; background:rgba(10,14,20,.86); backdrop-filter:blur(3px); }
+#drop.show{ display:grid; }
+#drop .box{ border:2px dashed var(--accent); border-radius:16px; padding:48px 60px; text-align:center; font-family:var(--mono); color:var(--accent); }
+#drop .box small{ display:block; color:var(--sub); margin-top:8px; font-size:.78rem; }
+
+/* preview */
+#preview{ display:none; }
+.preview-head{ text-align:center; padding:6px 0 26px; border-bottom:1px solid var(--line); margin-bottom:30px; }
+.preview-head h1{ font-size:clamp(1.8rem,5vw,2.6rem); font-weight:700; margin:.2em auto .3em; max-width:18ch; letter-spacing:-.01em; }
+.preview-head .pm{ font-family:var(--mono); font-size:.76rem; color:var(--muted); }
+
+/* POST CONTENT — identical block lives in index.html */
+.doc{ counter-reset:sec; }
+.doc>p:first-child{ color:var(--text); font-size:1.12rem; }
+.doc h2{ font-size:clamp(1.25rem,3.2vw,1.6rem); font-weight:600; margin:1.4em 0 .4em; display:flex; gap:.6ch; align-items:baseline; }
+.doc h2::before{ counter-increment:sec; content:counter(sec,decimal-leading-zero); font-family:var(--mono); font-size:.9rem; color:var(--accent); }
+.doc h3{ font-size:clamp(1.05rem,2.6vw,1.25rem); font-weight:600; margin:1.2em 0 .3em; color:var(--text); }
+.doc p{ color:var(--sub); }
+.doc strong{ color:var(--text); } .doc a{ color:var(--accent); text-decoration:underline; text-underline-offset:3px; }
+.doc ul,.doc ol{ padding-left:1.3em; color:var(--sub); margin:0 0 1em; } .doc li{ margin:.3em 0; } .doc li strong{ color:var(--text); }
+.doc blockquote{ margin:1.2em 0; padding:2px 0 2px 18px; border-left:2px solid var(--accent); color:var(--text); }
+.doc pre{ background:var(--crust); border:1px solid var(--line); border-radius:10px; padding:13px 15px; overflow:auto; margin:0 0 1.2em; }
+.doc code{ font-family:var(--mono); font-size:.85rem; color:var(--text); }
+.doc :not(pre)>code{ background:var(--surf2); padding:.1em .4em; border-radius:5px; font-size:.82em; }
+.doc img{ max-width:100%; height:auto; border:1px solid var(--line); border-radius:10px; margin:.6em 0 1.2em; }
+.doc hr{ border:0; border-top:1px solid var(--line); margin:2em 0; }
+
+/* modal */
+.modal{ position:fixed; inset:0; z-index:70; display:none; place-items:center; background:rgba(8,12,18,.7); padding:20px; }
+.modal.show{ display:grid; }
+.panel{ width:100%; max-width:560px; max-height:86vh; overflow:auto; background:var(--mantle); border:1px solid var(--line); border-radius:14px; padding:24px; }
+.panel h2{ font-family:var(--mono); font-size:1rem; margin:0 0 4px; }
+.panel p.sub{ color:var(--sub); font-size:.88rem; margin:0 0 18px; }
+.panel .field{ margin-bottom:14px; }
+.panel label{ display:block; font-family:var(--mono); font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:5px; }
+.panel input{ width:100%; background:var(--surf); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+.panel input:focus{ outline:none; border-color:var(--accent); }
+.panel .note{ font-family:var(--mono); font-size:.66rem; color:var(--muted); margin-top:5px; line-height:1.6; }
+.panel .warn{ border:1px solid color-mix(in srgb,var(--warn) 40%,transparent); background:color-mix(in srgb,var(--warn) 8%,transparent); border-radius:9px; padding:11px 13px; font-size:.8rem; color:var(--warn); margin-bottom:16px; }
+.panel .row{ display:flex; gap:10px; justify-content:flex-end; margin-top:8px; flex-wrap:wrap; }
+.draftrow{ display:flex; align-items:center; gap:10px; padding:11px 12px; border:1px solid var(--line); border-radius:9px; margin-bottom:8px; }
+.draftrow .t{ flex:1; min-width:0; } .draftrow .t b{ display:block; color:var(--text); font-size:.92rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.draftrow .t span{ font-family:var(--mono); font-size:.66rem; color:var(--muted); }
+.draftrow button{ font-family:var(--mono); font-size:.7rem; padding:6px 9px; border-radius:7px; border:1px solid var(--line); background:var(--surf); color:var(--sub); cursor:pointer; }
+.draftrow button:hover{ color:var(--text); border-color:var(--accent); }
+.draftrow button.del:hover{ color:var(--danger); border-color:var(--danger); }
+
+#toast{ position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px); z-index:80; opacity:0; transition:.25s;
+  font-family:var(--mono); font-size:.8rem; background:var(--surf2); border:1px solid var(--line); border-radius:9px; padding:11px 16px; max-width:90vw; }
+#toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+#toast.ok{ border-color:color-mix(in srgb,var(--good) 50%,transparent); color:var(--good); }
+#toast.err{ border-color:color-mix(in srgb,var(--danger) 50%,transparent); color:var(--danger); }
+
+textarea.code{ width:100%; min-height:120px; background:var(--crust); border:1px solid var(--line); border-radius:9px; padding:11px 13px; font-family:var(--mono); font-size:.8rem; color:var(--text); white-space:pre; overflow:auto; }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="brand"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" stroke="currentColor" stroke-opacity=".5" stroke-width="1.6"/><path d="M7 8l3.2 4L7 16" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="12.5" y1="16" x2="17" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>studio</span>
+  <button class="tab on" id="tab-write">write</button>
+  <button class="tab" id="tab-preview">preview</button>
+  <span class="sp"></span>
+  <span class="saved" id="saved"></span>
+  <button class="act ghost" id="btn-new" title="Start a new post">new</button>
+  <button class="act ghost" id="btn-drafts">drafts</button>
+  <button class="act ghost" id="btn-settings" title="GitLab push settings">⚙</button>
+  <button class="act" id="btn-export">export</button>
+  <button class="act primary" id="btn-push">publish → gitlab</button>
+</div>
+
+<div class="shell">
+  <div class="meta">
+    <div><label>slug · the post's url</label><input id="slug" placeholder="auto-from-title" autocomplete="off"></div>
+    <div><label>date</label><input id="date" type="date"></div>
+    <div class="full"><label>tags · comma separated</label><input id="tags" placeholder="networking, pcap, blue-team" autocomplete="off"></div>
+    <div class="full"><label>excerpt · one line for the blog list</label><input id="excerpt" placeholder="The one-sentence pitch for this post." autocomplete="off"><div class="hint" id="excerpt-hint"></div></div>
+  </div>
+
+  <div id="write">
+    <div class="insert">
+      <button data-ins="docx">⇪ import .docx</button>
+      <button data-ins="codeblock">{ } code block</button>
+      <button data-ins="image">▣ image</button>
+      <button data-ins="hr">— divider</button>
+    </div>
+    <textarea id="title" rows="1" placeholder="Title"></textarea>
+    <div id="editor" contenteditable="true" data-ph="Tell your story… or drag a .docx anywhere on this page."></div>
+  </div>
+
+  <div id="preview">
+    <div class="preview-head"><h1 id="pv-title"></h1><p class="pm" id="pv-meta"></p></div>
+    <article class="doc" id="pv-body"></article>
+  </div>
+</div>
+
+<div id="fmt">
+  <button data-cmd="bold" title="Bold"><b>B</b></button>
+  <button data-cmd="italic" title="Italic"><i>I</i></button>
+  <button data-cmd="link" title="Link">🔗</button>
+  <span class="sep"></span>
+  <button data-cmd="h2" title="Heading">H2</button>
+  <button data-cmd="h3" title="Subheading">H3</button>
+  <button data-cmd="quote" title="Quote">❝</button>
+  <button data-cmd="code" title="Inline code">{ }</button>
+  <button data-cmd="ul" title="Bullet list">•</button>
+</div>
+
+<div id="drop"><div class="box">drop your .docx<small>LibreOffice / Word — converted right here, nothing uploaded</small></div></div>
+
+<input type="file" id="file" accept=".docx" hidden>
+
+<div class="modal" id="m-drafts"><div class="panel">
+  <h2>Drafts</h2><p class="sub">Saved in this browser only. Open one to keep editing.</p>
+  <div id="draft-list"></div>
+  <div class="row"><button class="act ghost" data-close>close</button></div>
+</div></div>
+
+<div class="modal" id="m-settings"><div class="panel">
+  <h2>GitLab push</h2><p class="sub">Lets "publish → gitlab" commit straight to your repo. Stored in this browser only.</p>
+  <div class="warn">A token in browser storage is a real key. Use a project-scoped token with only <b>write_repository</b>, on your own machine. Anyone with this browser can read it.</div>
+  <div class="field"><label>gitlab instance</label><input id="gl-url" placeholder="https://gitlab.com"><div class="note">Default gitlab.com. Self-hosted? Put its base URL.</div></div>
+  <div class="field"><label>project id or path</label><input id="gl-project" placeholder="marweentimbreza/pursuix or 12345678"><div class="note">Project → Settings → General shows the numeric Project ID (most reliable).</div></div>
+  <div class="field"><label>branch</label><input id="gl-branch" placeholder="main"></div>
+  <div class="field"><label>access token</label><input id="gl-token" type="password" placeholder="glpat-…"><div class="note">Project → Settings → Access Tokens → role Developer, scope write_repository.</div></div>
+  <div class="row"><button class="act ghost" data-close>close</button><button class="act" id="gl-clear">clear token</button><button class="act primary" id="gl-save">save</button></div>
+</div></div>
+
+<div class="modal" id="m-export"><div class="panel">
+  <h2>Publish by hand</h2><p class="sub">Two files. Drop them in your repo and push. Done in 30 seconds.</p>
+  <div class="field"><label>1 · save as <span class="mono" id="ex-name"></span> inside <span class="mono">/posts/</span></label><div class="row" style="justify-content:flex-start"><button class="act primary" id="ex-post">download post file</button></div></div>
+  <div class="field"><label>2 · replace <span class="mono">/posts.json</span> with this</label><textarea class="code" id="ex-json" readonly></textarea><div class="row" style="justify-content:flex-start"><button class="act" id="ex-json-dl">download posts.json</button><button class="act ghost" id="ex-json-copy">copy</button></div></div>
+  <div class="note mono" style="color:var(--muted);margin-bottom:16px">git add . &amp;&amp; git commit -m "post: <span id="ex-slug"></span>" &amp;&amp; git push</div>
+  <div class="row"><button class="act ghost" data-close>close</button></div>
+</div></div>
+
+<div id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const els = { title:$('#title'), editor:$('#editor'), slug:$('#slug'), date:$('#date'), tags:$('#tags'), excerpt:$('#excerpt') };
+const LS = { drafts:'pursuix.drafts', library:'pursuix.library', current:'pursuix.current', gitlab:'pursuix.gitlab' };
+const load = (k,f) => { try{ return JSON.parse(localStorage.getItem(k)) ?? f; }catch(e){ return f; } };
+const save = (k,v) => localStorage.setItem(k, JSON.stringify(v));
+const today = () => new Date().toISOString().slice(0,10);
+const slugify = t => (t||'').toLowerCase().trim().replace(/[^\w\s-]/g,'').replace(/[\s_-]+/g,'-').replace(/^-+|-+$/g,'');
+
+let currentId = localStorage.getItem(LS.current) || ('d'+Date.now());
+localStorage.setItem(LS.current, currentId);
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg, kind){ const t=$('#toast'); t.textContent=msg; t.className='show '+(kind||''); clearTimeout(toastT); toastT=setTimeout(()=>t.className=t.className.replace('show','').trim(),3200); }
+
+/* ---------- title autosize ---------- */
+function fitTitle(){ els.title.style.height='auto'; els.title.style.height=els.title.scrollHeight+'px'; }
+els.title.addEventListener('input', ()=>{ fitTitle(); if(!els.slug.dataset.touched) els.slug.value = slugify(els.title.value); touch(); });
+els.slug.addEventListener('input', ()=>{ els.slug.dataset.touched='1'; touch(); });
+[els.date, els.tags, els.excerpt].forEach(el=>el.addEventListener('input', touch));
+els.editor.addEventListener('input', ()=>{ suggestExcerpt(); touch(); });
+
+function suggestExcerpt(){
+  if(els.excerpt.value.trim()) { $('#excerpt-hint').textContent=''; return; }
+  const p = els.editor.querySelector('p'); const txt = p ? p.textContent.trim() : '';
+  $('#excerpt-hint').textContent = txt ? 'suggested: '+txt.slice(0,90)+(txt.length>90?'…':'') : '';
+}
+
+/* ---------- draft autosave ---------- */
+let saveT;
+function touch(){ $('#saved').textContent='saving…'; clearTimeout(saveT); saveT=setTimeout(persist,600); }
+function persist(){
+  const drafts = load(LS.drafts,{});
+  drafts[currentId] = { id:currentId, title:els.title.value, html:els.editor.innerHTML,
+    slug:els.slug.value, date:els.date.value, tags:els.tags.value, excerpt:els.excerpt.value, updated:Date.now() };
+  save(LS.drafts, drafts);
+  $('#saved').textContent='saved · '+new Date().toLocaleTimeString();
+}
+function restore(){
+  const d = load(LS.drafts,{})[currentId];
+  els.date.value = (d&&d.date) || today();
+  if(d){ els.title.value=d.title||''; els.editor.innerHTML=d.html||''; els.slug.value=d.slug||''; els.tags.value=d.tags||''; els.excerpt.value=d.excerpt||''; if(d.slug) els.slug.dataset.touched='1'; }
+  fitTitle(); suggestExcerpt();
+}
+
+/* ---------- formatting ---------- */
+function exec(cmd, val){ document.execCommand(cmd, false, val); els.editor.focus(); touch(); }
+function block(tag){
+  const cur = document.queryCommandValue('formatBlock').toLowerCase();
+  exec('formatBlock', (cur===tag) ? 'p' : tag);
+}
+const fmt = $('#fmt');
+fmt.addEventListener('mousedown', e=>e.preventDefault());
+fmt.querySelectorAll('button').forEach(b=>b.addEventListener('click', ()=>{
+  const c=b.dataset.cmd;
+  if(c==='bold'||c==='italic') exec(c);
+  else if(c==='h2') block('h2');
+  else if(c==='h3') block('h3');
+  else if(c==='quote') block('blockquote');
+  else if(c==='ul') exec('insertUnorderedList');
+  else if(c==='code'){ const s=window.getSelection().toString(); if(s) exec('insertHTML','<code>'+s.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</code>'); }
+  else if(c==='link'){ const url=prompt('Link URL'); if(url) exec('createLink', url); }
+  positionFmt();
+}));
+function positionFmt(){
+  const sel=window.getSelection();
+  if(!sel.rangeCount || sel.isCollapsed || !els.editor.contains(sel.anchorNode)){ fmt.style.display='none'; return; }
+  const r=sel.getRangeAt(0).getBoundingClientRect();
+  if(!r.width && !r.height){ fmt.style.display='none'; return; }
+  fmt.style.display='flex'; fmt.style.left=(r.left+r.width/2)+'px'; fmt.style.top=(r.top-8)+'px';
+}
+document.addEventListener('selectionchange', positionFmt);
+window.addEventListener('scroll', ()=>{ if(fmt.style.display==='flex') positionFmt(); }, true);
+
+/* ---------- inserts ---------- */
+document.querySelectorAll('[data-ins]').forEach(b=>b.addEventListener('click', ()=>{
+  const k=b.dataset.ins; els.editor.focus();
+  if(k==='docx') $('#file').click();
+  else if(k==='codeblock') exec('insertHTML','<pre><code>code…</code></pre><p><br></p>');
+  else if(k==='hr') exec('insertHTML','<hr><p><br></p>');
+  else if(k==='image'){ const src=prompt('Image path or URL\n(e.g. assets/img/capture.png)'); if(src){ const alt=prompt('Alt text (describe the image)')||''; exec('insertHTML','<img src="'+src.replace(/"/g,'&quot;')+'" alt="'+alt.replace(/"/g,'&quot;')+'"><p><br></p>'); } }
+}));
+
+/* ---------- docx import (Mammoth, client-side) ---------- */
+$('#file').addEventListener('change', e=>{ if(e.target.files[0]) importDocx(e.target.files[0]); e.target.value=''; });
+const drop=$('#drop'); let dragN=0;
+['dragenter','dragover'].forEach(ev=>document.addEventListener(ev, e=>{ if([...e.dataTransfer.types].includes('Files')){ e.preventDefault(); dragN++; drop.classList.add('show'); } }));
+['dragleave','drop'].forEach(ev=>document.addEventListener(ev, e=>{ e.preventDefault(); dragN=Math.max(0,dragN-(ev==='drop'?dragN:1)); if(!dragN) drop.classList.remove('show'); }));
+document.addEventListener('drop', e=>{ const f=[...(e.dataTransfer.files||[])].find(f=>f.name.toLowerCase().endsWith('.docx')); if(f) importDocx(f); else if(e.dataTransfer.files.length) toast('Only .docx files convert here.','err'); });
+
+function importDocx(file){
+  toast('converting '+file.name+'…');
+  const reader=new FileReader();
+  reader.onload = () => mammoth.convertToHtml({arrayBuffer:reader.result})
+    .then(res=>{
+      const tmp=document.createElement('div'); tmp.innerHTML=res.value;
+      tmp.querySelectorAll('h1').forEach(h=>rename(h,'h2')); tmp.querySelectorAll('h4,h5,h6').forEach(h=>rename(h,'h3'));
+      const h2=tmp.querySelector('h2');
+      if(!els.title.value.trim() && h2 && tmp.firstElementChild===h2){ els.title.value=h2.textContent.trim(); h2.remove(); fitTitle(); if(!els.slug.dataset.touched) els.slug.value=slugify(els.title.value); }
+      els.editor.innerHTML = tmp.innerHTML;
+      suggestExcerpt(); touch();
+      toast('imported — review headings & formatting','ok');
+      tab('write');
+    })
+    .catch(()=>toast('couldn\'t read that .docx','err'));
+  reader.readAsArrayBuffer(file);
+}
+function rename(el,tag){ const n=document.createElement(tag); [...el.attributes].forEach(a=>n.setAttribute(a.name,a.value)); n.innerHTML=el.innerHTML; el.replaceWith(n); return n; }
+
+/* ---------- build clean fragment ---------- */
+const ALLOWED={P:[],H2:[],H3:[],STRONG:[],EM:[],A:['href'],UL:[],OL:[],LI:[],BLOCKQUOTE:[],PRE:[],CODE:[],IMG:['src','alt'],BR:[],HR:[]};
+const RENAME={B:'STRONG',I:'EM',DIV:'P',H1:'H2',H4:'H3',H5:'H3',H6:'H3'};
+function sanitize(html){
+  const src=document.createElement('div'); src.innerHTML=html; const out=document.createElement('div');
+  (function conv(node,parent){
+    node.childNodes.forEach(n=>{
+      if(n.nodeType===3){ parent.appendChild(document.createTextNode(n.nodeValue)); return; }
+      if(n.nodeType!==1) return;
+      const tag=RENAME[n.tagName]||n.tagName;
+      if(ALLOWED[tag]){
+        const el=document.createElement(tag);
+        ALLOWED[tag].forEach(a=>{ if(n.hasAttribute(a)) el.setAttribute(a,n.getAttribute(a)); });
+        if(tag==='A'){ el.setAttribute('rel','noopener'); const href=el.getAttribute('href')||''; if(/^https?:\/\//i.test(href)) el.setAttribute('target','_blank'); }
+        conv(n,el); parent.appendChild(el);
+      } else conv(n,parent);
+    });
+  })(src,out);
+  out.querySelectorAll('p,h2,h3,blockquote,li').forEach(el=>{ if(!el.textContent.trim() && !el.querySelector('img,br')) el.remove(); });
+  out.querySelectorAll('p').forEach(el=>{ if(el.innerHTML.trim()==='<br>') el.remove(); });
+  return [...out.children].map(c=>c.outerHTML).join('\n');
+}
+function fragment(){ return sanitize(els.editor.innerHTML); }
+function readingTime(){ const w=(els.editor.textContent||'').trim().split(/\s+/).filter(Boolean).length; return Math.max(1, Math.round(w/200)); }
+
+function gather(){
+  const title=els.title.value.trim();
+  const slug=(els.slug.value.trim()||slugify(title));
+  const errs=[];
+  if(!title) errs.push('a title');
+  if(!slug) errs.push('a slug');
+  if(!els.editor.textContent.trim()) errs.push('some writing');
+  return { ok:!errs.length, errs, title, slug,
+    entry:{ slug, title, excerpt:els.excerpt.value.trim()||(els.editor.querySelector('p')?.textContent.trim().slice(0,140)||''),
+      date:els.date.value||today(), tags:els.tags.value.split(',').map(t=>t.trim()).filter(Boolean),
+      status:'published', readingTime:readingTime() },
+    body:fragment() };
+}
+function upsert(list, entry){ const i=list.findIndex(p=>p.slug===entry.slug); if(i>=0) list[i]=entry; else list.push(entry); return list.sort((a,b)=>(b.date||'').localeCompare(a.date||'')); }
+
+/* ---------- export (download) ---------- */
+function download(name, text, type){ const b=new Blob([text],{type:type||'text/plain'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=name; a.click(); URL.revokeObjectURL(u); }
+$('#btn-export').addEventListener('click', ()=>{
+  const g=gather(); if(!g.ok){ toast('Need '+g.errs.join(', ')+' first.','err'); return; }
+  const lib=upsert(load(LS.library,[]), g.entry); save(LS.library, lib);
+  $('#ex-name').textContent=g.slug+'.html'; $('#ex-slug').textContent=g.slug;
+  $('#ex-json').value=JSON.stringify(lib,null,2);
+  $('#ex-post').onclick=()=>{ download(g.slug+'.html', g.body, 'text/html'); toast('downloaded '+g.slug+'.html','ok'); };
+  $('#ex-json-dl').onclick=()=>download('posts.json', JSON.stringify(lib,null,2), 'application/json');
+  $('#ex-json-copy').onclick=()=>{ navigator.clipboard.writeText(JSON.stringify(lib,null,2)); toast('posts.json copied','ok'); };
+  openModal('m-export'); persist();
+});
+
+/* ---------- GitLab push ---------- */
+function gl(){ return load(LS.gitlab,{url:'https://gitlab.com',branch:'main'}); }
+function glApi(path){ const c=gl(); return c.url.replace(/\/+$/,'')+'/api/v4/projects/'+encodeURIComponent(c.project)+path; }
+async function glGet(path, raw){ const c=gl(); const r=await fetch(glApi(path),{headers:{'PRIVATE-TOKEN':c.token}}); if(r.status===404) return null; if(!r.ok) throw new Error('GitLab '+r.status+(r.status===401?' — bad token':'')); return raw? r.text() : r.json(); }
+
+$('#btn-push').addEventListener('click', async ()=>{
+  const c=gl();
+  if(location.protocol==='file:'){ toast('Push needs the studio served over http — run a local server (see handover).','err'); return; }
+  if(!c.project||!c.token){ openModal('m-settings'); toast('Add your GitLab project & token first.','err'); return; }
+  const g=gather(); if(!g.ok){ toast('Need '+g.errs.join(', ')+' first.','err'); return; }
+  const btn=$('#btn-push'); btn.disabled=true; const label=btn.textContent; btn.textContent='publishing…';
+  try{
+    const remote = await glGet('/repository/files/posts.json/raw?ref='+encodeURIComponent(c.branch), true);
+    let list = remote ? JSON.parse(remote) : [];
+    list = upsert(Array.isArray(list)?list:[], g.entry);
+    save(LS.library, list);
+    const postPath = 'posts/'+g.slug+'.html';
+    const postExists = await glGet('/repository/files/'+encodeURIComponent(postPath)+'?ref='+encodeURIComponent(c.branch));
+    const actions=[
+      { action: postExists?'update':'create', file_path:postPath, content:g.body },
+      { action: remote?'update':'create', file_path:'posts.json', content:JSON.stringify(list,null,2) }
+    ];
+    const r=await fetch(glApi('/repository/commits'),{ method:'POST',
+      headers:{'PRIVATE-TOKEN':c.token,'Content-Type':'application/json'},
+      body:JSON.stringify({ branch:c.branch, commit_message:'post: '+g.slug, actions }) });
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.message||('GitLab '+r.status));
+    toast('published → '+g.slug+' · committed '+(d.short_id||''),'ok'); persist();
+  }catch(e){ const m=/Failed to fetch|NetworkError/.test(e.message)?'Browser couldn\'t reach GitLab (often CORS). Use Export — it never fails.':e.message; toast(m||'push failed','err'); }
+  finally{ btn.disabled=false; btn.textContent=label; }
+});
+
+$('#gl-save').addEventListener('click', ()=>{ save(LS.gitlab,{ url:$('#gl-url').value.trim()||'https://gitlab.com', project:$('#gl-project').value.trim(), branch:$('#gl-branch').value.trim()||'main', token:$('#gl-token').value.trim() }); closeModals(); toast('GitLab settings saved','ok'); });
+$('#gl-clear').addEventListener('click', ()=>{ const c=gl(); c.token=''; save(LS.gitlab,c); $('#gl-token').value=''; toast('token cleared','ok'); });
+
+/* ---------- drafts + new ---------- */
+$('#btn-new').addEventListener('click', ()=>{ if(els.editor.textContent.trim()||els.title.value.trim()) persist(); currentId='d'+Date.now(); localStorage.setItem(LS.current,currentId); els.title.value=''; els.editor.innerHTML=''; els.slug.value=''; delete els.slug.dataset.touched; els.tags.value=''; els.excerpt.value=''; els.date.value=today(); fitTitle(); suggestExcerpt(); $('#saved').textContent=''; tab('write'); els.title.focus(); });
+$('#btn-drafts').addEventListener('click', ()=>{ renderDrafts(); openModal('m-drafts'); });
+function renderDrafts(){
+  const drafts=load(LS.drafts,{}); const list=$('#draft-list');
+  const arr=Object.values(drafts).sort((a,b)=>b.updated-a.updated);
+  if(!arr.length){ list.innerHTML='<p class="sub">No drafts yet.</p>'; return; }
+  list.innerHTML=arr.map(d=>`<div class="draftrow" data-id="${d.id}"><div class="t"><b>${(d.title||'untitled').replace(/</g,'&lt;')}</b><span>${new Date(d.updated).toLocaleString()}${d.id===currentId?' · open':''}</span></div><button data-open>open</button><button class="del" data-del>delete</button></div>`).join('');
+  list.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{ persist(); currentId=b.closest('.draftrow').dataset.id; localStorage.setItem(LS.current,currentId); restore(); closeModals(); tab('write'); });
+  list.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ const id=b.closest('.draftrow').dataset.id; const dd=load(LS.drafts,{}); delete dd[id]; save(LS.drafts,dd); if(id===currentId){ currentId='d'+Date.now(); localStorage.setItem(LS.current,currentId); restore(); } renderDrafts(); });
+}
+
+/* ---------- tabs / preview ---------- */
+function tab(name){
+  const w=name==='write';
+  $('#tab-write').classList.toggle('on',w); $('#tab-preview').classList.toggle('on',!w);
+  $('#write').style.display=w?'':'none'; $('#preview').style.display=w?'none':'';
+  if(!w){
+    $('#pv-title').textContent=els.title.value||'Untitled';
+    const tags=els.tags.value.split(',').map(t=>t.trim()).filter(Boolean);
+    $('#pv-meta').innerHTML=(els.date.value||today())+' &nbsp;•&nbsp; '+readingTime()+' min read'+(tags.length?' &nbsp;•&nbsp; '+tags.map(t=>'#'+t).join(' '):'');
+    $('#pv-body').innerHTML=fragment();
+  }
+}
+$('#tab-write').addEventListener('click', ()=>tab('write'));
+$('#tab-preview').addEventListener('click', ()=>tab('preview'));
+
+/* ---------- modals ---------- */
+function openModal(id){ closeModals(); $('#'+id).classList.add('show'); }
+function closeModals(){ document.querySelectorAll('.modal').forEach(m=>m.classList.remove('show')); }
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', closeModals));
+document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click', e=>{ if(e.target===m) closeModals(); }));
+$('#btn-settings').addEventListener('click', ()=>{ const c=gl(); $('#gl-url').value=c.url||'https://gitlab.com'; $('#gl-project').value=c.project||''; $('#gl-branch').value=c.branch||'main'; $('#gl-token').value=c.token||''; openModal('m-settings'); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModals(); if((e.metaKey||e.ctrlKey)&&e.key==='s'){ e.preventDefault(); persist(); toast('saved','ok'); } });
+
+restore();
+</script>
+</body>
+</html>

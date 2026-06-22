@@ -1,0 +1,14 @@
+<p>This is the first note on a site I'll keep adding to as I learn the defensive side of security. It's deliberately plain: static files, no tracker, no third-party scripts on the page you're reading. If you're here from a resume link — welcome. The writing is the proof.</p>
+
+<h2>How this gets written</h2>
+<p>Two ways, both ending in the same clean HTML. I either type straight into a browser editor — select text and a small toolbar appears for headings, links, and code — or I drag a LibreOffice/Word document onto the page and it's converted in place. Nothing about the draft leaves my machine until I choose to publish.</p>
+
+<h2>Why static, why no analytics</h2>
+<p>Every script on a page is something a reader has to trust. I'd rather hold none of that. Posts are just files in a git repo; the site is the repo, served as-is. The trade is that publishing is a commit instead of a button — which suits how I already work.</p>
+<ul>
+<li><strong>Source of truth:</strong> a small <code>posts.json</code> the homepage reads to build this list.</li>
+<li><strong>Each post:</strong> its own file under <code>/posts/</code>, pulled in when you open it.</li>
+</ul>
+
+<h2>What's coming</h2>
+<p>Notes on reading network traffic, triaging alerts, and turning what I find into detections — written as I go, mistakes left in where they're useful. If something here is wrong or you want to compare notes, the contact form on the about page reaches me.</p>

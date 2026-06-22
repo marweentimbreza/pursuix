@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40" font-family="ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace">
+  <g transform="translate(4,8)">
+    <rect x="0" y="0" width="24" height="24" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.6"/>
+    <path d="M7 8 L11.5 12 L7 16" fill="none" stroke="#82aef0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="13" y1="16" x2="18" y2="16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+  </g>
+  <text x="38" y="27" font-size="20" font-weight="600" fill="currentColor">pursuix</text>
+</svg>

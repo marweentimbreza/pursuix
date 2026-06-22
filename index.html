@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>pursuix — defensive security</title>
+<meta name="description" content="A working record of learning to defend — logs, network traffic, detections, and the write-ups that prove I understood them.">
+<link rel="icon" href="/assets/favicon.svg">
+<style>
+:root{
+  --base:#131821; --mantle:#0e131a; --crust:#0a0e14;
+  --surf:#1a212d; --surf2:#222b3a; --line:#28323f;
+  --text:#c6cedb; --sub:#98a3b4; --muted:#697486;
+  --accent:#82aef0;
+  --accent-soft:rgba(130,174,240,.13);
+  --good:#8fcfae; --warn:#e6c07a; --danger:#e58a82;
+  --mono:ui-monospace,"JetBrains Mono","SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; scroll-behavior:smooth; }
+body{ margin:0; background:var(--base); color:var(--text); font-family:var(--sans);
+  font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased; min-height:100vh;
+  display:flex; flex-direction:column; }
+a{ color:inherit; text-decoration:none; }
+p{ margin:0 0 1em; color:var(--sub); max-width:62ch; }
+.wrap{ width:100%; max-width:960px; margin-inline:auto; padding-inline:clamp(18px,5vw,40px); }
+a:focus-visible,button:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; border-radius:5px; }
+::selection{ background:var(--accent-soft); }
+
+.status{ border-bottom:1px solid var(--line); background:var(--mantle); }
+.status .wrap{ display:flex; justify-content:space-between; align-items:center; padding-block:9px;
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.14em; color:var(--muted); text-transform:uppercase; gap:8px; flex-wrap:wrap; }
+.status .on{ display:inline-flex; align-items:center; gap:7px; }
+.status .on::before{ content:""; width:7px; height:7px; border-radius:50%; background:var(--good); box-shadow:0 0 0 3px color-mix(in srgb,var(--good) 18%,transparent); }
+.status .role{ color:var(--accent); }
+
+header.site{ position:sticky; top:0; z-index:40; background:color-mix(in srgb,var(--base) 88%,transparent);
+  backdrop-filter:blur(10px) saturate(140%); -webkit-backdrop-filter:blur(10px) saturate(140%); border-bottom:1px solid var(--line); }
+header.site .wrap{ display:flex; align-items:center; justify-content:space-between; gap:12px 18px; padding-block:15px; flex-wrap:wrap; }
+.brand{ font-family:var(--mono); font-size:1rem; font-weight:600; display:inline-flex; align-items:center; gap:.5ch; min-height:40px; }
+.brand .mark{ width:22px; height:22px; flex:none; }
+.brand .cur{ display:inline-block; width:8px; height:1.05em; background:var(--accent); vertical-align:-.18em; margin-right:.3ch; animation:blink 1.05s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+nav ul{ list-style:none; margin:0; padding:0; display:flex; gap:4px; flex-wrap:wrap; }
+nav a{ font-family:var(--mono); font-size:.74rem; letter-spacing:.14em; text-transform:uppercase; color:var(--sub);
+  background:none; border:0; border-bottom:2px solid transparent; padding:8px 11px; min-height:40px; display:inline-flex; align-items:center; cursor:pointer; transition:color .15s; }
+nav a:hover{ color:var(--text); }
+nav a.active{ color:var(--text); border-bottom-color:var(--accent); }
+
+main{ flex:1; }
+.section{ display:none; }
+.section.active{ display:block; animation:fade .5s cubic-bezier(.22,.61,.36,1); }
+@keyframes fade{ from{ opacity:0; transform:translateY(12px); } to{ opacity:1; transform:none; } }
+.latest{ margin-top:34px; }
+.eyebrow{ font-family:var(--mono); font-size:.72rem; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); display:inline-flex; align-items:center; gap:.7em; }
+.eyebrow::before{ content:""; width:24px; height:1px; background:var(--accent); }
+.block{ padding-block:clamp(44px,8vw,80px); }
+h1.big{ font-family:var(--mono); font-weight:600; font-size:clamp(2rem,6.5vw,3.3rem); line-height:1.06; letter-spacing:-.01em; margin:.5em 0 .35em; }
+h1.big .a{ color:var(--accent); }
+
+.term{ border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--mantle); box-shadow:0 22px 60px -34px rgba(0,0,0,.7); margin:26px 0 30px; }
+.term-bar{ display:flex; align-items:center; gap:8px; padding:11px 14px; border-bottom:1px solid var(--line); }
+.term-bar .d{ width:11px; height:11px; border-radius:50%; }
+.term-bar .d:nth-child(1){ background:#e58a82; } .term-bar .d:nth-child(2){ background:#e6c07a; } .term-bar .d:nth-child(3){ background:#8fcfae; }
+.term-bar .path{ font-family:var(--mono); font-size:.72rem; color:var(--muted); margin-left:6px; }
+.term-body{ font-family:var(--mono); font-size:clamp(.9rem,2.3vw,1.02rem); padding:20px clamp(16px,4vw,26px); }
+.term-body .line{ margin:0 0 .6em; color:var(--sub); overflow-wrap:anywhere; }
+.term-body .p{ color:var(--accent); } .term-body .o{ color:var(--text); }
+.caret{ display:inline-block; width:8px; height:1.05em; background:var(--accent); vertical-align:-.18em; margin-left:2px; animation:blink 1.05s steps(1) infinite; }
+
+.lede{ font-size:clamp(1.04rem,2.5vw,1.22rem); color:var(--sub); max-width:54ch; }
+.cta{ display:flex; gap:12px; flex-wrap:wrap; margin-top:26px; }
+.btn{ font-family:var(--mono); font-size:.84rem; display:inline-flex; align-items:center; gap:.6ch; min-height:46px; padding:0 18px;
+  border-radius:9px; border:1px solid var(--line); color:var(--text); background:var(--surf); cursor:pointer; transition:border-color .15s,transform .12s; }
+.btn:hover{ border-color:var(--accent); } .btn:active{ transform:translateY(1px); }
+.btn.go{ background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 45%,transparent); color:var(--accent); }
+
+.empty{ border:1px dashed var(--line); border-radius:12px; padding:24px;
+  background:repeating-linear-gradient(135deg,transparent,transparent 9px,rgba(255,255,255,.013) 9px,rgba(255,255,255,.013) 18px); }
+.empty .tag{ font-family:var(--mono); font-size:.68rem; letter-spacing:.12em; color:var(--accent); text-transform:uppercase; }
+.empty h3{ font-family:var(--mono); margin:.4em 0 .4em; color:var(--text); }
+.empty p{ margin:0; }
+
+.post{ display:grid; grid-template-columns:160px 1fr auto; gap:8px 26px; align-items:start; width:100%; text-align:left;
+  padding:28px 0; border-top:1px solid var(--line); background:none; border-left:0; border-right:0; border-bottom:0; cursor:pointer; transition:background .15s; font:inherit; color:inherit; }
+.post:hover{ background:color-mix(in srgb,var(--surf) 45%,transparent); }
+.post .meta{ font-family:var(--mono); font-size:.72rem; letter-spacing:.07em; color:var(--muted); line-height:1.7; }
+.post h2{ font-size:clamp(1.2rem,3vw,1.45rem); font-weight:600; margin:0 0 .35em; color:var(--text); }
+.post:hover h2{ color:var(--accent); }
+.post .ex{ color:var(--sub); margin:0 0 .7em; display:block; }
+.post .tags{ font-family:var(--mono); font-size:.66rem; letter-spacing:.05em; color:var(--muted); display:flex; gap:13px; flex-wrap:wrap; }
+.post .state{ font-family:var(--mono); font-size:.66rem; letter-spacing:.14em; color:var(--accent); white-space:nowrap; text-transform:uppercase; }
+.morenote{ font-family:var(--mono); font-size:.74rem; color:var(--muted); padding:24px 0; border-top:1px solid var(--line); }
+
+.back{ font-family:var(--mono); font-size:.78rem; color:var(--sub); background:none; border:0; cursor:pointer; display:inline-flex; gap:.6ch; padding:0; }
+.back:hover{ color:var(--accent); }
+.posthead{ text-align:center; padding:18px 0 30px; }
+.posthead h1{ font-size:clamp(1.9rem,5.5vw,2.9rem); line-height:1.1; font-weight:700; margin:.4em auto .4em; max-width:18ch; font-family:var(--sans); letter-spacing:-.01em; }
+.posthead .pm{ font-family:var(--mono); font-size:.78rem; color:var(--muted); } .posthead .pm .a{ color:var(--accent); }
+.plyt{ display:grid; grid-template-columns:minmax(0,1fr) 220px; gap:42px; align-items:start; }
+.plyt.solo{ grid-template-columns:minmax(0,1fr); }
+.toc{ position:sticky; top:80px; border:1px solid var(--line); border-radius:11px; padding:16px; background:color-mix(in srgb,var(--surf) 50%,transparent); }
+.toc h3{ font-size:.95rem; margin:0 0 .7em; font-family:var(--mono); }
+.toc ol{ list-style:none; margin:0; padding:0; counter-reset:t; display:grid; gap:8px; }
+.toc li{ counter-increment:t; } .toc a{ font-size:.84rem; color:var(--sub); } .toc a::before{ content:counter(t)". "; color:var(--muted); font-family:var(--mono); } .toc a:hover{ color:var(--accent); }
+
+/* POST CONTENT — identical block lives in studio.html preview */
+.doc{ counter-reset:sec; }
+.doc>p:first-child{ color:var(--text); font-size:1.12rem; }
+.doc h2{ font-size:clamp(1.25rem,3.2vw,1.6rem); font-weight:600; margin:1.4em 0 .4em; scroll-margin-top:80px; display:flex; gap:.6ch; align-items:baseline; }
+.doc h2::before{ counter-increment:sec; content:counter(sec,decimal-leading-zero); font-family:var(--mono); font-size:.9rem; color:var(--accent); }
+.doc h3{ font-size:clamp(1.05rem,2.6vw,1.25rem); font-weight:600; margin:1.2em 0 .3em; color:var(--text); scroll-margin-top:80px; }
+.doc p{ color:var(--sub); }
+.doc strong{ color:var(--text); } .doc a{ color:var(--accent); text-decoration:underline; text-underline-offset:3px; text-decoration-color:color-mix(in srgb,var(--accent) 40%,transparent); }
+.doc ul,.doc ol{ padding-left:1.3em; color:var(--sub); margin:0 0 1em; } .doc li{ margin:.3em 0; } .doc li strong{ color:var(--text); }
+.doc blockquote{ margin:1.2em 0; padding:2px 0 2px 18px; border-left:2px solid var(--accent); color:var(--text); }
+.doc pre{ background:var(--crust); border:1px solid var(--line); border-radius:10px; padding:13px 15px; overflow:auto; margin:0 0 1.2em; }
+.doc code{ font-family:var(--mono); font-size:.85rem; color:var(--text); }
+.doc :not(pre)>code{ background:var(--surf2); padding:.1em .4em; border-radius:5px; font-size:.82em; }
+.doc img{ max-width:100%; height:auto; border:1px solid var(--line); border-radius:10px; margin:.6em 0 1.2em; }
+.doc hr{ border:0; border-top:1px solid var(--line); margin:2em 0; }
+
+.links{ display:grid; gap:2px; max-width:420px; margin:8px 0 30px; }
+.links a{ font-family:var(--mono); font-size:.86rem; display:flex; gap:12px; align-items:center; padding:11px 12px; border-radius:8px; color:var(--sub); min-height:44px; border:1px solid transparent; transition:.15s; }
+.links a:hover{ background:var(--surf); border-color:var(--line); color:var(--text); }
+.links a .k{ color:var(--muted); min-width:70px; } .links a:hover .v{ color:var(--accent); }
+.certs{ display:grid; gap:10px; max-width:480px; margin:8px 0 30px; }
+.cert{ display:flex; justify-content:space-between; align-items:center; gap:14px; border:1px solid var(--line); border-radius:9px; padding:13px 15px; background:var(--surf); }
+.cert .cn{ font-family:var(--mono); font-size:.86rem; color:var(--text); }
+.cert .cs{ font-family:var(--mono); font-size:.62rem; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); border:1px solid color-mix(in srgb,var(--accent) 40%,transparent); border-radius:20px; padding:3px 10px; white-space:nowrap; }
+.form{ display:grid; gap:13px; max-width:520px; }
+.form label{ font-family:var(--mono); font-size:.72rem; letter-spacing:.06em; color:var(--muted); display:block; margin-bottom:6px; }
+.form input,.form textarea{ width:100%; font-size:1rem; color:var(--text); background:var(--surf); border:1px solid var(--line); border-radius:9px; padding:12px 13px; font-family:var(--sans); }
+.form input:focus,.form textarea:focus{ outline:none; border-color:var(--accent); }
+.form textarea{ min-height:120px; resize:vertical; }
+.row2{ display:grid; gap:13px; grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr)); }
+.hp{ position:absolute; left:-9999px; }
+.statusmsg{ font-family:var(--mono); font-size:.8rem; min-height:1.3em; color:var(--sub); } .statusmsg.ok{ color:var(--good); } .statusmsg.err{ color:var(--danger); }
+
+footer.site{ border-top:1px solid var(--line); background:var(--mantle); padding-block:26px 40px; }
+footer .wrap{ display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap; font-family:var(--mono); font-size:.72rem; color:var(--muted); }
+footer .links2{ display:flex; gap:18px; flex-wrap:wrap; } footer a:hover{ color:var(--accent); }
+
+@media (max-width:640px){ .post{ grid-template-columns:1fr; } .post .state{ order:-1; } }
+@media (max-width:820px){ .plyt{ grid-template-columns:1fr; gap:22px; } .toc{ position:static; order:-1; } }
+@media (prefers-reduced-motion:reduce){ *{ animation:none!important; transition:none!important; } html{ scroll-behavior:auto; } }
+</style>
+</head>
+<body>
+
+<div class="status"><div class="wrap"><span class="on">online · pursuix.com</span><span class="role">defensive security</span></div></div>
+
+<header class="site"><div class="wrap">
+  <a class="brand" href="#home"><svg class="mark" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" stroke="currentColor" stroke-opacity=".5" stroke-width="1.6"/><path d="M7 8l3.2 4L7 16" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="12.5" y1="16" x2="17" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="cur" aria-hidden="true"></span>pursuix</a>
+  <nav><ul>
+    <li><a href="#home">home</a></li>
+    <li><a href="#projects">projects</a></li>
+    <li><a href="#blog">blog</a></li>
+    <li><a href="#about">about</a></li>
+  </ul></nav>
+</div></header>
+
+<main>
+  <section class="section block active" id="home"><div class="wrap">
+    <span class="eyebrow">// defensive security · blue team</span>
+    <div class="term">
+      <div class="term-bar"><span class="d"></span><span class="d"></span><span class="d"></span><span class="path">~/pursuix</span></div>
+      <div class="term-body">
+        <p class="line"><span class="p">pursuix</span> <span class="o">&rsaquo;</span> whoami</p>
+        <p class="line">blue team in training &mdash; I <strong style="color:var(--text)">defend</strong> systems and write down how I learn to.</p>
+        <p class="line"><span class="p">pursuix</span> <span class="o">&rsaquo;</span> cat ./focus.txt</p>
+        <p class="line"><span id="typed"></span><span class="caret" aria-hidden="true"></span></p>
+      </div>
+    </div>
+    <h1 class="big">Ordinary worker by day,<br><span class="a">blue team researcher</span> by night.</h1>
+    <p class="lede">A working record of learning to <strong style="color:var(--text)">defend</strong> &mdash; logs, network traffic, detections, and the write-ups that prove I understood them. The defensive side, in the open.</p>
+    <div class="latest" id="latest" hidden>
+      <span class="eyebrow">latest notes</span>
+      <div id="latest-list"></div>
+    </div>
+    <div class="cta">
+      <a class="btn go" href="#blog">view all writing &rarr;</a>
+      <a class="btn" href="#about">get in touch</a>
+    </div>
+  </div></section>
+
+  <section class="section block" id="projects"><div class="wrap">
+    <span class="eyebrow">/projects</span>
+    <h1 class="big">Projects</h1>
+    <div class="empty">
+      <span class="tag">nothing shipped yet</span>
+      <h3>Building toward it.</h3>
+      <p>Detection rules, lab write-ups, and small defensive tools will land here &mdash; real ones only, once they exist. No placeholders pretending to be a portfolio.</p>
+    </div>
+  </div></section>
+
+  <section class="section block" id="blog"><div class="wrap">
+    <span class="eyebrow">/blog · notes &amp; research</span>
+    <h1 class="big">Notes &amp; <span class="a">research.</span></h1>
+    <p class="lede">What I'm figuring out on the defensive side &mdash; reading traffic, triaging alerts, and turning it into detections. Written as I go.</p>
+    <div id="blog-list" style="margin-top:24px"></div>
+  </div></section>
+
+  <section class="section block" id="post"><div class="wrap">
+    <button class="back" id="post-back">&larr; back to writing</button>
+    <div class="posthead">
+      <h1 id="post-title"></h1>
+      <p class="pm" id="post-meta"></p>
+    </div>
+    <div class="plyt" id="post-layout">
+      <article class="doc" id="post-article"></article>
+      <aside class="toc" id="post-toc"><h3>Contents</h3><ol></ol></aside>
+    </div>
+  </div></section>
+
+  <section class="section block" id="about"><div class="wrap">
+    <span class="eyebrow">/about</span>
+    <h1 class="big">About</h1>
+    <p>I study the <strong style="color:var(--text)">defensive</strong> side of security &mdash; going deeper into how to <strong style="color:var(--text)">detect, prevent, and contain</strong> threats. Everything here is me learning in the open, with the writing as the proof.</p>
+
+    <span class="eyebrow" style="margin-top:18px">certifications · on the way</span>
+    <div class="certs">
+      <div class="cert"><span class="cn">CompTIA Security+ (SY0-701)</span><span class="cs">in progress</span></div>
+      <div class="cert"><span class="cn">BTL1 &mdash; Blue Team Level 1</span><span class="cs">planned</span></div>
+    </div>
+
+    <span class="eyebrow">elsewhere</span>
+    <div class="links">
+      <a href="https://github.com/marweentimbreza" target="_blank" rel="noopener"><span class="k">github</span><span class="v">github.com/marweentimbreza</span></a>
+      <a href="https://x.com/timbrezadev" target="_blank" rel="noopener"><span class="k">x</span><span class="v">x.com/timbrezadev</span></a>
+    </div>
+
+    <span class="eyebrow">get in touch</span>
+    <h2 style="font-family:var(--mono);font-weight:600;margin:.5em 0 .3em">Say hello</h2>
+    <p>Want to know more, or compare notes? Drop a line.</p>
+    <form class="form" id="cf" action="https://api.web3forms.com/submit" method="POST">
+      <input type="hidden" name="access_key" value="c409fc48-eb59-46f6-b9b2-f7be7d72ee21">
+      <input type="hidden" name="subject" value="New message from pursuix.com">
+      <input type="checkbox" name="botcheck" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <div class="row2">
+        <div><label>name</label><input type="text" name="name" required placeholder="Your name"></div>
+        <div><label>email</label><input type="email" name="email" required placeholder="you@somewhere.com"></div>
+      </div>
+      <div><label>message</label><textarea name="message" required placeholder="What's on your mind?"></textarea></div>
+      <button class="btn go" type="submit">send message &rarr;</button>
+      <p class="statusmsg" id="sm" role="status" aria-live="polite"></p>
+    </form>
+  </div></section>
+</main>
+
+<footer class="site"><div class="wrap">
+  <span>&copy; <span id="yr"></span> pursuix &middot; all rights reserved</span>
+  <span class="links2">
+    <a href="https://github.com/marweentimbreza" target="_blank" rel="noopener">github</a>
+    <a href="https://x.com/timbrezadev" target="_blank" rel="noopener">x</a>
+  </span>
+</div></footer>
+
+<script>
+const $ = s => document.querySelector(s);
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+$('#yr').textContent = new Date().getFullYear();
+
+const slugify = t => t.toLowerCase().trim().replace(/[^\w\s-]/g,'').replace(/[\s_-]+/g,'-').replace(/^-+|-+$/g,'');
+const fmtDate = iso => { const d = new Date(iso+'T00:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}); };
+const esc = s => s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+let posts = [];
+let currentSlug = null;
+const ready = fetch('posts.json',{cache:'no-store'})
+  .then(r => r.ok ? r.json() : [])
+  .then(d => { posts = (Array.isArray(d)?d:[]).filter(p=>p.status!=='draft').sort((a,b)=>(b.date||'').localeCompare(a.date||'')); })
+  .catch(() => { posts = null; });
+
+function card(p, idx){
+  const read = p.readingTime ? p.readingTime+' min read' : '';
+  const tags = (p.tags||[]).map(t=>'<span>#'+esc(t)+'</span>').join('');
+  const num = String((posts.length-idx)).padStart(2,'0');
+  return `<a class="post" href="#post/${esc(p.slug)}">
+    <span class="meta">${num} &middot; ${esc(fmtDate(p.date))}<br>${read}</span>
+    <span><h2>${esc(p.title)}</h2><span class="ex">${esc(p.excerpt||'')}</span><span class="tags">${tags}</span></span>
+    <span class="state">read &rarr;</span></a>`;
+}
+
+function renderList(){
+  const list = $('#blog-list'), latest = $('#latest');
+  if(posts === null){ list.innerHTML = '<p class="morenote">Couldn\'t load posts. If you opened this file directly, run a local server (see the studio) — it works once deployed.</p>'; return; }
+  if(!posts.length){ list.innerHTML = '<p class="morenote">More notes land here as I publish.</p>'; latest.hidden = true; return; }
+  list.innerHTML = posts.map(card).join('');
+  $('#latest-list').innerHTML = card(posts[0], 0);
+  latest.hidden = false;
+}
+
+async function openPost(slug){
+  currentSlug = slug;
+  const meta = (posts||[]).find(p => p.slug === slug);
+  const art = $('#post-article'), toc = $('#post-toc'), layout = $('#post-layout');
+  $('#post-title').textContent = meta ? meta.title : slug;
+  if(!meta){ art.innerHTML = '<p>That post isn\'t in the index.</p>'; $('#post-meta').textContent=''; toc.hidden=true; layout.classList.add('solo'); return; }
+  $('#post-meta').innerHTML = `${esc(fmtDate(meta.date))}${meta.readingTime?' &nbsp;•&nbsp; '+meta.readingTime+' min read':''}`;
+  art.innerHTML = '<p style="color:var(--muted)">loading…</p>';
+  try{
+    const r = await fetch('posts/'+slug+'.html',{cache:'no-store'});
+    if(!r.ok) throw 0;
+    art.innerHTML = await r.text();
+  }catch(e){ art.innerHTML = '<p>Couldn\'t load this post.</p>'; toc.hidden=true; layout.classList.add('solo'); return; }
+  const heads = [...art.querySelectorAll('h2')];
+  if(heads.length){
+    const ol = toc.querySelector('ol'); ol.innerHTML='';
+    heads.forEach(h=>{ const id = slugify(h.textContent)||('s'+Math.random().toString(36).slice(2,6)); h.id=id;
+      ol.insertAdjacentHTML('beforeend', `<li><a href="#post/${esc(slug)}/${id}">${esc(h.textContent)}</a></li>`); });
+    toc.hidden=false; layout.classList.remove('solo');
+  } else { toc.hidden=true; layout.classList.add('solo'); }
+}
+
+const sections = ['home','projects','blog','about'];
+function show(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active', s.id===id));
+  const navTarget = id==='post' ? 'blog' : id;
+  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('active', a.getAttribute('href')==='#'+navTarget));
+}
+
+async function route(){
+  const h = location.hash.slice(1);
+  if(h.startsWith('post/')){
+    await ready;
+    const parts = h.split('/'); const slug = parts[1]; const anchor = parts[2];
+    if(slug !== currentSlug) await openPost(slug);
+    show('post');
+    if(anchor){ const el=document.getElementById(anchor); if(el){ el.scrollIntoView(); return; } }
+    window.scrollTo(0,0);
+    return;
+  }
+  const id = sections.includes(h) ? h : 'home';
+  show(id); window.scrollTo(0,0);
+  if(id==='home') runTyped();
+}
+addEventListener('hashchange', route);
+
+$('#post-back').addEventListener('click', ()=>{ location.hash = '#blog'; });
+
+const typedEl = $('#typed');
+const msg = 'DFIR · detection engineering · SOC — the defensive side.';
+function runTyped(){ if(!typedEl) return; if(reduce){ typedEl.textContent=msg; return; }
+  typedEl.textContent=''; let i=0; (function step(){ if(i<=msg.length){ typedEl.textContent=msg.slice(0,i++); setTimeout(step,26); } })(); }
+
+const cf = $('#cf'), sm = $('#sm');
+cf.addEventListener('submit', e=>{ e.preventDefault();
+  if(cf.querySelector('[name=access_key]').value.startsWith('YOUR-')){ sm.textContent='Form not wired yet — add your Web3Forms access key.'; sm.className='statusmsg err'; return; }
+  sm.textContent='sending…'; sm.className='statusmsg';
+  fetch(cf.action,{method:'POST',body:new FormData(cf),headers:{Accept:'application/json'}})
+    .then(r=>r.json().then(d=>({ok:r.ok,d}))).then(res=>{
+      if(res.ok){ sm.textContent='Sent. I\'ll get back to you.'; sm.className='statusmsg ok'; cf.reset(); }
+      else { sm.textContent=(res.d&&res.d.message)||'Something went wrong.'; sm.className='statusmsg err'; }
+    }).catch(()=>{ sm.textContent='Network error — try again.'; sm.className='statusmsg err'; });
+});
+
+ready.then(renderList).then(route);
+</script>
+</body>
+</html>
