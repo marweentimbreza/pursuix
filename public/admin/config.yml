@@ -1,7 +1,7 @@
 backend:
   name: github
   # ── CHANGE ME (1/2): your GitHub username/repo ──
-  repo: marweentimbreza/YOUR-REPO-NAME
+  repo: marweentimbreza/pursuix
   branch: main
   # ── CHANGE ME (2/2): your deployed sveltia-cms-auth Worker URL ──
   base_url: https://sveltia-cms-auth.psycho225b.workers.dev
