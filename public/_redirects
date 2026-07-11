@@ -1,0 +1,5 @@
+# Friendly aliases and legacy paths
+/blogs        /blog        301
+/blogs/*      /blog/:splat 301
+/project      /projects    301
+/notes/*      /blog/:splat 301

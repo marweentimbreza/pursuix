@@ -1,0 +1,40 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const notes = await getCollection('notes');
+  return notes.map((note) => ({
+    params: { slug: note.id },
+    props: { note },
+  }));
+}
+
+const { note } = Astro.props;
+const { Content } = await render(note);
+
+function fmt(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+---
+<Layout
+  title={`${note.data.title} — pursuix`}
+  description={note.data.description}
+>
+  <main>
+    <article class="article">
+      <a class="backlink" href="/blog/">← cd ../blog</a>
+      <span class="cmdline"><b>~$</b> cat {note.id}.md</span>
+      <h1>{note.data.title}</h1>
+      <div class="meta">
+        {note.data.draft
+          ? <span class="chip draft">draft · updating</span>
+          : <span>{fmt(note.data.date)}</span>}
+        <span class="tags">{note.data.tags.map((t) => `#${t}`).join('  ')}</span>
+      </div>
+      <div class="prose">
+        <Content />
+      </div>
+    </article>
+  </main>
+</Layout>

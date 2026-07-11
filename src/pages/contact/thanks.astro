@@ -1,0 +1,28 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+<Layout title="message received — pursuix" description="Message received.">
+  <main>
+    <section class="section" style="min-height:52vh">
+      <div class="section-head reveal">
+        <span class="cmdline"><b>~$</b> ./say-hello --sent</span>
+        <h3>Message received</h3>
+      </div>
+      <div class="term reveal" style="max-width:640px">
+        <div class="term-bar">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span>say-hello — bash</span>
+        </div>
+        <div class="term-body console">
+          <span class="in"><b>~$</b> status</span><br />
+          <span class="out">delivered · queued for a human reply</span><br />
+          <span class="comment"># thanks for writing — I'll get back to you.</span><br />
+          <span class="comment"># meanwhile: <a href="/blog/" style="color:var(--green)">./blog</a> has the latest notes.</span>
+        </div>
+      </div>
+      <div class="more-row reveal">
+        <a class="btn ghost" href="/">cd ~ →</a>
+      </div>
+    </section>
+  </main>
+</Layout>

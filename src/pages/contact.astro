@@ -1,0 +1,57 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout
+  title="contact — pursuix"
+  description="Say hello — compare notes, ask questions, drop a line."
+>
+  <main>
+    <section class="section">
+      <div class="section-head reveal">
+        <span class="cmdline"><b>~$</b> ./say-hello</span>
+        <h3>Contact</h3>
+      </div>
+      <div class="term reveal" style="max-width:720px">
+        <div class="term-bar">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span>say-hello — bash</span>
+        </div>
+        <div class="term-body">
+          <p class="cmd"><b>~$</b> cat ./contact.txt</p>
+          <p>Want to know more, or compare notes? Drop a line — I read everything.</p>
+
+          <!--
+            Web3Forms: free form backend for static sites.
+            Get your access key at https://web3forms.com (enter your email, key arrives instantly),
+            then replace the value below. The hidden "botcheck" field is a honeypot for spam bots.
+          -->
+          <form class="form" action="https://api.web3forms.com/submit" method="POST" style="margin-top:22px">
+            <input type="hidden" name="access_key" value="YOUR-WEB3FORMS-ACCESS-KEY-HERE" />
+            <input type="hidden" name="subject" value="New message from pursuix.com" />
+            <input type="hidden" name="redirect" value="https://pursuix.com/contact/thanks/" />
+            <input type="checkbox" name="botcheck" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+            <div>
+              <label for="cf-name">name</label>
+              <input id="cf-name" type="text" name="name" required maxlength="100" autocomplete="name" />
+            </div>
+            <div>
+              <label for="cf-email">email</label>
+              <input id="cf-email" type="email" name="email" required maxlength="200" autocomplete="email" />
+            </div>
+            <div>
+              <label for="cf-msg">message</label>
+              <textarea id="cf-msg" name="message" required maxlength="4000"></textarea>
+            </div>
+            <button type="submit">$ send message →</button>
+          </form>
+
+          <div class="alt-contact">
+            prefer another channel?<br />
+            → <a href="https://github.com/marweentimbreza">github.com/marweentimbreza</a><br />
+            → <a href="https://x.com/timbrezadev">x.com/timbrezadev</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</Layout>

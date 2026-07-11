@@ -1,0 +1,236 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+
+const notes = (await getCollection('notes')).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+const latest = notes.slice(0, 2);
+
+function fmt(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+---
+<Layout>
+
+<!-- terminal loading screen (first visit per session) -->
+<div class="loader" id="loader" aria-hidden="true">
+  <div class="loader-inner">
+    <div class="loader-brand">pursuix<em>//</em>ops — secure shell</div>
+    <div class="loader-lines" id="loaderLines"></div>
+    <div class="loader-bar" id="loaderBar"></div>
+    <div class="loader-granted" id="loaderGranted">access granted. welcome to the watch.</div>
+  </div>
+  <div class="loader-skip">click anywhere to skip</div>
+</div>
+
+<main>
+  <section class="hero" id="top">
+    <div class="boot" id="boot" aria-hidden="true"></div>
+
+    <div class="hero-main" id="heroMain">
+      <h1 class="wordmark">Pursui<span class="x">x</span><span class="block-cursor" aria-hidden="true"></span></h1>
+
+      <div class="thesis">
+        <h2>ordinary worker by day, <b>blue team researcher</b> by night.</h2>
+        <p>A working record of learning to defend — logs, network traffic, detections, and the write-ups that prove I understood them. The defensive side, in the open.</p>
+        <div class="cta-row">
+          <a class="btn primary" href="/blog/">$ open ./blog</a>
+          <a class="btn ghost" href="/contact/">$ ./say-hello</a>
+        </div>
+      </div>
+
+      <div class="logfeed" aria-hidden="true">
+        <span class="cmd"><b>~$</b> tail -f /var/log/watch.log</span>
+        <div id="feed"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="map">
+    <div class="section-head reveal">
+      <span class="cmdline"><b>~$</b> ls -la ~/pursuix</span>
+      <h3>Around here</h3>
+    </div>
+    <div class="ls-list reveal">
+      <a class="ls-row" href="/blog/">
+        <span class="perm">drwxr-xr-x</span>
+        <span class="name">blog/</span>
+        <span class="desc">notes &amp; research — the write-ups that prove the learning</span>
+      </a>
+      <a class="ls-row" href="/projects/">
+        <span class="perm">drwxr-xr-x</span>
+        <span class="name">projects/</span>
+        <span class="desc">defensive tools and lab builds — real ones only, once they exist</span>
+      </a>
+      <a class="ls-row" href="/about/">
+        <span class="perm">drwxr-xr-x</span>
+        <span class="name">about/</span>
+        <span class="desc">whoami — focus, certifications, and where else to find me</span>
+      </a>
+      <a class="ls-row" href="/contact/">
+        <span class="perm">drwxr-xr-x</span>
+        <span class="name">contact/</span>
+        <span class="desc">say hello — compare notes, ask questions, drop a line</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="section" id="latest">
+    <div class="section-head reveal">
+      <span class="cmdline"><b>~$</b> ls ./blog --sort=recent | head -2</span>
+      <h3>Latest notes</h3>
+    </div>
+    <div class="files">
+      {latest.map((note, i) => (
+        <a class="file reveal" href={`/blog/${note.id}/`}>
+          <div class="file-meta">
+            <span class="dots"><i></i><i></i><i></i></span>
+            <span>note-{String(notes.length - i).padStart(3, '0')}.md</span>
+            {note.data.draft
+              ? <span class="chip draft">draft · updating</span>
+              : <span class="chip published">{fmt(note.data.date)}</span>}
+          </div>
+          <div class="file-body">
+            <h4>{note.data.title}</h4>
+            <p>{note.data.description}</p>
+            <span class="tags">{note.data.tags.map((t) => `#${t}`).join('  ')}</span>
+            <span class="read">cat {note.id}.md</span>
+          </div>
+        </a>
+      ))}
+    </div>
+    <div class="more-row reveal">
+      <a class="btn ghost" href="/blog/">view all writing →</a>
+    </div>
+  </section>
+</main>
+
+<script is:inline>
+  (function(){
+    var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function p(n){return String(n).padStart(2,'0')}
+    function utcNow(){var d=new Date();return p(d.getUTCHours())+':'+p(d.getUTCMinutes())+':'+p(d.getUTCSeconds())}
+
+    /* generic line typer */
+    function typeLines(container,lines,speed,gap,done){
+      var li=0;
+      function next(){
+        if(li>=lines.length){if(done)done();return}
+        var l=lines[li];
+        var s=document.createElement('span');s.className='line';container.appendChild(s);
+        var ci=0;
+        var iv=setInterval(function(){
+          ci++;
+          s.textContent=l.text.slice(0,ci);
+          if(ci>=l.text.length){
+            clearInterval(iv);
+            s.innerHTML=l.html;
+            li++;setTimeout(next,gap);
+          }
+        },speed);
+      }
+      next();
+    }
+
+    /* loading screen — plays once per browser session */
+    var loader=document.getElementById('loader');
+    var loaderDismissed=false;
+    var alreadyBoarded=false;
+    try{alreadyBoarded=!!sessionStorage.getItem('px-boarded')}catch(e){}
+
+    var bootLines=[
+      {html:'<span class="prompt">pursuix@ops:~$</span> ./init --shift night',text:'pursuix@ops:~$ ./init --shift night'},
+      {html:'[ <span class="ok">ok</span> ] loading notes … <span class="val">fresh from the repo</span>',text:'[ ok ] loading notes … fresh from the repo'},
+      {html:'[ <span class="ok">ok</span> ] sensors online … <span class="val">all quiet</span>',text:'[ ok ] sensors online … all quiet'}
+    ];
+    var boot=document.getElementById('boot');
+    var heroMain=document.getElementById('heroMain');
+    var pageStarted=false;
+
+    function startPage(){
+      if(pageStarted)return;pageStarted=true;
+      typeLines(boot,bootLines,14,200,function(){
+        setTimeout(function(){heroMain.classList.add('on')},200);
+      });
+    }
+    function startPageInstant(){
+      if(pageStarted)return;pageStarted=true;
+      bootLines.forEach(function(l){
+        var s=document.createElement('span');s.className='line';s.innerHTML=l.html;boot.appendChild(s);
+      });
+      heroMain.classList.add('on');
+    }
+
+    function dismissLoader(){
+      if(loaderDismissed)return;
+      loaderDismissed=true;
+      loader.classList.add('done');
+      setTimeout(startPage,300);
+    }
+
+    if(reduce||alreadyBoarded){
+      loaderDismissed=true;
+      loader.classList.add('done');
+      startPageInstant();
+    }else{
+      try{sessionStorage.setItem('px-boarded','1')}catch(e){}
+      loader.addEventListener('click',dismissLoader);
+      document.addEventListener('keydown',function(e){if(e.key==='Escape')dismissLoader()});
+
+      var loadLines=[
+        {html:'&gt; establishing secure session … <span class="ok">ok</span>',text:'> establishing secure session … ok'},
+        {html:'&gt; mounting <span class="val">~/pursuix</span> … <span class="ok">ok</span>',text:'> mounting ~/pursuix … ok'},
+        {html:'&gt; starting the watch … <span class="ok">ok</span>',text:'> starting the watch … ok'}
+      ];
+      typeLines(document.getElementById('loaderLines'),loadLines,11,140,null);
+
+      var bar=document.getElementById('loaderBar');
+      var cells=24,prog=0;
+      function drawBar(){
+        var f=Math.round(prog/100*cells);
+        bar.innerHTML='[<span class="fill">'+'█'.repeat(f)+'</span>'+'░'.repeat(cells-f)+'] '+Math.floor(prog)+'%';
+      }
+      drawBar();
+      var barIv=setInterval(function(){
+        if(loaderDismissed){clearInterval(barIv);return}
+        var step=(prog>52&&prog<60)?(Math.random()*1.5):(3+Math.random()*7);
+        prog=Math.min(100,prog+step);
+        drawBar();
+        if(prog>=100){
+          clearInterval(barIv);
+          document.getElementById('loaderGranted').classList.add('show');
+          setTimeout(dismissLoader,420);
+        }
+      },95);
+    }
+
+    /* ambient log feed */
+    var feed=document.getElementById('feed');
+    var feedMsgs=[
+      'heartbeat ok · 0 alerts in queue',
+      'reading the wire · packets, not vibes',
+      'study session active · security+ prep',
+      'auth watch: no anomalies in last window',
+      'draft open · words landing slowly',
+      'perimeter quiet · logging continues',
+      'nothing gets past the watch'
+    ];
+    var fi=0;
+    function pushLog(){
+      var e=document.createElement('span');
+      e.className='entry';
+      e.innerHTML='<span class="t">['+utcNow()+']</span> '+feedMsgs[fi%feedMsgs.length];
+      fi++;
+      feed.insertBefore(e,feed.firstChild);
+      requestAnimationFrame(function(){requestAnimationFrame(function(){e.classList.add('show')})});
+      var entries=feed.querySelectorAll('.entry');
+      entries.forEach(function(el,i){el.classList.toggle('old',i>0)});
+      while(feed.children.length>3)feed.removeChild(feed.lastChild);
+    }
+    pushLog();
+    if(!reduce)setInterval(pushLog,4200);
+  })();
+</script>
+
+</Layout>
