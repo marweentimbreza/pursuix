@@ -2,361 +2,588 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>pursuix — defensive security</title>
-<meta name="description" content="A working record of learning to defend — logs, network traffic, detections, and the write-ups that prove I understood them.">
-<link rel="icon" href="/assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=JetBrains+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{
-  --base:#131821; --mantle:#0e131a; --crust:#0a0e14;
-  --surf:#1a212d; --surf2:#222b3a; --line:#28323f;
-  --text:#c6cedb; --sub:#98a3b4; --muted:#697486;
-  --accent:#82aef0;
-  --accent-soft:rgba(130,174,240,.13);
-  --good:#8fcfae; --warn:#e6c07a; --danger:#e58a82;
-  --mono:ui-monospace,"JetBrains Mono","SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
-  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-}
-*{ box-sizing:border-box; }
-html{ -webkit-text-size-adjust:100%; scroll-behavior:smooth; }
-body{ margin:0; background:var(--base); color:var(--text); font-family:var(--sans);
-  font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased; min-height:100vh;
-  display:flex; flex-direction:column; }
-a{ color:inherit; text-decoration:none; }
-p{ margin:0 0 1em; color:var(--sub); max-width:62ch; }
-.wrap{ width:100%; max-width:960px; margin-inline:auto; padding-inline:clamp(18px,5vw,40px); }
-a:focus-visible,button:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; border-radius:5px; }
-::selection{ background:var(--accent-soft); }
+  :root{
+    --bg:#10141B;
+    --panel:#151B25;
+    --panel-edge:rgba(190,210,230,.09);
+    --panel-hover:rgba(150,199,168,.4);
+    --line:rgba(190,210,230,.10);
+    --text:#C4CEDA;
+    --dim:#7E8A9A;
+    --head:#E6ECF3;
+    --green:#96C7A8;
+    --green-soft:rgba(150,199,168,.13);
+    --ice:#87AECB;
+    --sand:#CBB58C;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+    --sans:'IBM Plex Sans',system-ui,sans-serif;
+    --display:'Archivo',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:var(--sans);
+    background:var(--bg);
+    color:var(--text);
+    font-size:16.5px;line-height:1.7;
+    background-image:
+      radial-gradient(1000px 460px at 65% -12%, rgba(150,199,168,.06), transparent 65%),
+      radial-gradient(rgba(190,210,230,.04) 1px, transparent 1px);
+    background-size:auto,30px 30px;
+  }
+  a{color:inherit}
+  :focus-visible{outline:2px solid var(--green);outline-offset:3px;border-radius:2px}
+  ::selection{background:rgba(150,199,168,.3);color:var(--head)}
 
-.status{ border-bottom:1px solid var(--line); background:var(--mantle); }
-.status .wrap{ display:flex; justify-content:space-between; align-items:center; padding-block:9px;
-  font-family:var(--mono); font-size:.66rem; letter-spacing:.14em; color:var(--muted); text-transform:uppercase; gap:8px; flex-wrap:wrap; }
-.status .on{ display:inline-flex; align-items:center; gap:7px; }
-.status .on::before{ content:""; width:7px; height:7px; border-radius:50%; background:var(--good); box-shadow:0 0 0 3px color-mix(in srgb,var(--good) 18%,transparent); }
-.status .role{ color:var(--accent); }
+  /* ---------- loading screen ---------- */
+  .loader{
+    position:fixed;inset:0;z-index:99;
+    background:var(--bg);
+    background-image:radial-gradient(900px 420px at 50% 0%, rgba(150,199,168,.05), transparent 65%);
+    display:flex;align-items:center;justify-content:center;
+    transition:opacity .55s ease,visibility .55s;
+    cursor:pointer;
+  }
+  .loader.done{opacity:0;visibility:hidden;pointer-events:none}
+  .loader-inner{width:min(540px,88vw);font-family:var(--mono);font-size:13px;line-height:2.1;color:var(--dim)}
+  .loader-brand{
+    font-size:14px;color:var(--head);letter-spacing:.05em;margin-bottom:18px;font-weight:500;
+  }
+  .loader-brand em{font-style:normal;color:var(--green)}
+  .loader-lines .line{display:block;white-space:pre-wrap;min-height:2.1em}
+  .loader .ok{color:var(--green)}
+  .loader .val{color:var(--text)}
+  .loader-bar{
+    margin-top:14px;color:var(--text);letter-spacing:.02em;
+    white-space:pre;font-variant-ligatures:none;
+  }
+  .loader-bar .fill{color:var(--green)}
+  .loader-granted{margin-top:10px;color:var(--green);opacity:0;transition:opacity .3s}
+  .loader-granted.show{opacity:1}
+  .loader-skip{
+    position:absolute;bottom:26px;left:0;right:0;text-align:center;
+    font-family:var(--mono);font-size:11px;color:var(--dim);opacity:.55;
+    letter-spacing:.12em;text-transform:uppercase;
+  }
 
-header.site{ position:sticky; top:0; z-index:40; background:color-mix(in srgb,var(--base) 88%,transparent);
-  backdrop-filter:blur(10px) saturate(140%); -webkit-backdrop-filter:blur(10px) saturate(140%); border-bottom:1px solid var(--line); }
-header.site .wrap{ display:flex; align-items:center; justify-content:space-between; gap:12px 18px; padding-block:15px; flex-wrap:wrap; }
-.brand{ font-family:var(--mono); font-size:1rem; font-weight:600; display:inline-flex; align-items:center; gap:.5ch; min-height:40px; }
-.brand .mark{ width:22px; height:22px; flex:none; }
-.brand .cur{ display:inline-block; width:8px; height:1.05em; background:var(--accent); vertical-align:-.18em; margin-right:.3ch; animation:blink 1.05s steps(1) infinite; }
-@keyframes blink{ 50%{ opacity:0; } }
-nav ul{ list-style:none; margin:0; padding:0; display:flex; gap:4px; flex-wrap:wrap; }
-nav a{ font-family:var(--mono); font-size:.74rem; letter-spacing:.14em; text-transform:uppercase; color:var(--sub);
-  background:none; border:0; border-bottom:2px solid transparent; padding:8px 11px; min-height:40px; display:inline-flex; align-items:center; cursor:pointer; transition:color .15s; }
-nav a:hover{ color:var(--text); }
-nav a.active{ color:var(--text); border-bottom-color:var(--accent); }
+  /* ---------- status bar ---------- */
+  .statusbar{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:14px 26px;
+    font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;
+    border-bottom:1px solid var(--line);color:var(--dim);
+  }
+  .statusbar .brand{color:var(--head);font-weight:500}
+  .statusbar .brand em{font-style:normal;color:var(--green)}
+  .statusbar nav{display:flex;gap:24px}
+  .statusbar nav a{text-decoration:none;transition:color .2s}
+  .statusbar nav a::before{content:"./";color:var(--dim);opacity:.6}
+  .statusbar nav a:hover{color:var(--green)}
+  .statusbar .telemetry{display:flex;align-items:center;gap:16px;white-space:nowrap}
+  .statusbar .clock{color:var(--head)}
+  .dot{
+    display:inline-block;width:7px;height:7px;border-radius:50%;
+    background:var(--green);margin-right:8px;vertical-align:1px;
+    box-shadow:0 0 8px rgba(150,199,168,.5);
+    animation:breathe 4s ease-in-out infinite;
+  }
+  @keyframes breathe{0%,100%{opacity:.95}50%{opacity:.4}}
 
-main{ flex:1; }
-.section{ display:none; }
-.section.active{ display:block; animation:fade .5s cubic-bezier(.22,.61,.36,1); }
-@keyframes fade{ from{ opacity:0; transform:translateY(12px); } to{ opacity:1; transform:none; } }
-.latest{ margin-top:34px; }
-.eyebrow{ font-family:var(--mono); font-size:.72rem; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); display:inline-flex; align-items:center; gap:.7em; }
-.eyebrow::before{ content:""; width:24px; height:1px; background:var(--accent); }
-.block{ padding-block:clamp(44px,8vw,80px); }
-h1.big{ font-family:var(--mono); font-weight:600; font-size:clamp(2rem,6.5vw,3.3rem); line-height:1.06; letter-spacing:-.01em; margin:.5em 0 .35em; }
-h1.big .a{ color:var(--accent); }
+  /* ---------- hero / boot ---------- */
+  .hero{
+    min-height:86vh;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:64px 26px 40px;
+    max-width:1160px;margin:0 auto;width:100%;
+  }
+  .boot{
+    font-family:var(--mono);font-size:13.5px;line-height:2;
+    color:var(--dim);margin-bottom:34px;min-height:84px;
+  }
+  .boot .prompt{color:var(--green)}
+  .boot .ok{color:var(--green)}
+  .boot .val{color:var(--text)}
+  .boot .line{display:block;white-space:pre-wrap}
 
-.term{ border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--mantle); box-shadow:0 22px 60px -34px rgba(0,0,0,.7); margin:26px 0 30px; }
-.term-bar{ display:flex; align-items:center; gap:8px; padding:11px 14px; border-bottom:1px solid var(--line); }
-.term-bar .d{ width:11px; height:11px; border-radius:50%; }
-.term-bar .d:nth-child(1){ background:#e58a82; } .term-bar .d:nth-child(2){ background:#e6c07a; } .term-bar .d:nth-child(3){ background:#8fcfae; }
-.term-bar .path{ font-family:var(--mono); font-size:.72rem; color:var(--muted); margin-left:6px; }
-.term-body{ font-family:var(--mono); font-size:clamp(.9rem,2.3vw,1.02rem); padding:20px clamp(16px,4vw,26px); }
-.term-body .line{ margin:0 0 .6em; color:var(--sub); overflow-wrap:anywhere; }
-.term-body .p{ color:var(--accent); } .term-body .o{ color:var(--text); }
-.caret{ display:inline-block; width:8px; height:1.05em; background:var(--accent); vertical-align:-.18em; margin-left:2px; animation:blink 1.05s steps(1) infinite; }
+  .cursor,.block-cursor{animation:blink 1.06s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
 
-.lede{ font-size:clamp(1.04rem,2.5vw,1.22rem); color:var(--sub); max-width:54ch; }
-.cta{ display:flex; gap:12px; flex-wrap:wrap; margin-top:26px; }
-.btn{ font-family:var(--mono); font-size:.84rem; display:inline-flex; align-items:center; gap:.6ch; min-height:46px; padding:0 18px;
-  border-radius:9px; border:1px solid var(--line); color:var(--text); background:var(--surf); cursor:pointer; transition:border-color .15s,transform .12s; }
-.btn:hover{ border-color:var(--accent); } .btn:active{ transform:translateY(1px); }
-.btn.go{ background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 45%,transparent); color:var(--accent); }
+  .hero-main{opacity:0;transform:translateY(14px);transition:opacity .8s ease,transform .8s ease}
+  .hero-main.on{opacity:1;transform:none}
 
-.empty{ border:1px dashed var(--line); border-radius:12px; padding:24px;
-  background:repeating-linear-gradient(135deg,transparent,transparent 9px,rgba(255,255,255,.013) 9px,rgba(255,255,255,.013) 18px); }
-.empty .tag{ font-family:var(--mono); font-size:.68rem; letter-spacing:.12em; color:var(--accent); text-transform:uppercase; }
-.empty h3{ font-family:var(--mono); margin:.4em 0 .4em; color:var(--text); }
-.empty p{ margin:0; }
+  h1.wordmark{
+    font-family:var(--display);
+    font-stretch:118%;font-weight:800;
+    font-size:clamp(56px,11.5vw,148px);
+    line-height:.95;letter-spacing:-.012em;text-transform:uppercase;
+    background:linear-gradient(180deg,var(--head) 30%,#9AAFC6 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  h1.wordmark .x{
+    background:linear-gradient(180deg,var(--green),#6FA588);
+    -webkit-background-clip:text;background-clip:text;
+  }
+  h1 .block-cursor{
+    display:inline-block;width:.14em;height:.78em;background:var(--green);
+    margin-left:.06em;vertical-align:.02em;
+  }
 
-.post{ display:grid; grid-template-columns:160px 1fr auto; gap:8px 26px; align-items:start; width:100%; text-align:left;
-  padding:28px 0; border-top:1px solid var(--line); background:none; border-left:0; border-right:0; border-bottom:0; cursor:pointer; transition:background .15s; font:inherit; color:inherit; }
-.post:hover{ background:color-mix(in srgb,var(--surf) 45%,transparent); }
-.post .meta{ font-family:var(--mono); font-size:.72rem; letter-spacing:.07em; color:var(--muted); line-height:1.7; }
-.post h2{ font-size:clamp(1.2rem,3vw,1.45rem); font-weight:600; margin:0 0 .35em; color:var(--text); }
-.post:hover h2{ color:var(--accent); }
-.post .ex{ color:var(--sub); margin:0 0 .7em; display:block; }
-.post .tags{ font-family:var(--mono); font-size:.66rem; letter-spacing:.05em; color:var(--muted); display:flex; gap:13px; flex-wrap:wrap; }
-.post .state{ font-family:var(--mono); font-size:.66rem; letter-spacing:.14em; color:var(--accent); white-space:nowrap; text-transform:uppercase; }
-.morenote{ font-family:var(--mono); font-size:.74rem; color:var(--muted); padding:24px 0; border-top:1px solid var(--line); }
+  .thesis{margin-top:36px;max-width:660px}
+  .thesis h2{
+    font-family:var(--mono);font-weight:500;
+    font-size:clamp(17px,2.2vw,21px);line-height:1.5;
+    color:var(--head);margin-bottom:12px;
+  }
+  .thesis h2::before{content:"> ";color:var(--green)}
+  .thesis h2 b{color:var(--green);font-weight:500}
+  .thesis p{color:var(--dim);font-size:16.5px}
+  .cta-row{display:flex;gap:14px;margin-top:32px;flex-wrap:wrap}
+  .btn{
+    font-family:var(--mono);font-size:13px;letter-spacing:.06em;
+    padding:13px 22px;text-decoration:none;border-radius:4px;
+    border:1px solid var(--panel-edge);
+    transition:border-color .2s,background .2s,color .2s;
+  }
+  .btn.primary{background:var(--green-soft);border-color:rgba(150,199,168,.4);color:var(--green)}
+  .btn.primary:hover{background:rgba(150,199,168,.22);border-color:var(--green)}
+  .btn.ghost{color:var(--dim)}
+  .btn.ghost:hover{color:var(--text);border-color:rgba(190,210,230,.3)}
 
-.back{ font-family:var(--mono); font-size:.78rem; color:var(--sub); background:none; border:0; cursor:pointer; display:inline-flex; gap:.6ch; padding:0; }
-.back:hover{ color:var(--accent); }
-.posthead{ text-align:center; padding:18px 0 30px; }
-.posthead h1{ font-size:clamp(1.9rem,5.5vw,2.9rem); line-height:1.1; font-weight:700; margin:.4em auto .4em; max-width:18ch; font-family:var(--sans); letter-spacing:-.01em; }
-.posthead .pm{ font-family:var(--mono); font-size:.78rem; color:var(--muted); } .posthead .pm .a{ color:var(--accent); }
-.plyt{ display:grid; grid-template-columns:minmax(0,1fr) 220px; gap:42px; align-items:start; }
-.plyt.solo{ grid-template-columns:minmax(0,1fr); }
-.toc{ position:sticky; top:80px; border:1px solid var(--line); border-radius:11px; padding:16px; background:color-mix(in srgb,var(--surf) 50%,transparent); }
-.toc h3{ font-size:.95rem; margin:0 0 .7em; font-family:var(--mono); }
-.toc ol{ list-style:none; margin:0; padding:0; counter-reset:t; display:grid; gap:8px; }
-.toc li{ counter-increment:t; } .toc a{ font-size:.84rem; color:var(--sub); } .toc a::before{ content:counter(t)". "; color:var(--muted); font-family:var(--mono); } .toc a:hover{ color:var(--accent); }
+  /* ---------- live log feed ---------- */
+  .logfeed{
+    margin-top:64px;border-top:1px solid var(--line);padding-top:16px;
+    font-family:var(--mono);font-size:12px;line-height:2;color:var(--dim);
+  }
+  .logfeed .cmd{opacity:.8;margin-bottom:4px;display:block}
+  .logfeed .cmd b{color:var(--green);font-weight:500}
+  .logfeed .entry{display:block;opacity:0;transform:translateY(4px);transition:opacity .5s,transform .5s}
+  .logfeed .entry.show{opacity:1;transform:none}
+  .logfeed .entry.old{opacity:.38}
+  .logfeed .t{color:var(--ice)}
 
-/* POST CONTENT — identical block lives in studio.html preview */
-.doc{ counter-reset:sec; }
-.doc>p:first-child{ color:var(--text); font-size:1.12rem; }
-.doc h2{ font-size:clamp(1.25rem,3.2vw,1.6rem); font-weight:600; margin:1.4em 0 .4em; scroll-margin-top:80px; display:flex; gap:.6ch; align-items:baseline; }
-.doc h2::before{ counter-increment:sec; content:counter(sec,decimal-leading-zero); font-family:var(--mono); font-size:.9rem; color:var(--accent); }
-.doc h3{ font-size:clamp(1.05rem,2.6vw,1.25rem); font-weight:600; margin:1.2em 0 .3em; color:var(--text); scroll-margin-top:80px; }
-.doc p{ color:var(--sub); }
-.doc strong{ color:var(--text); } .doc a{ color:var(--accent); text-decoration:underline; text-underline-offset:3px; text-decoration-color:color-mix(in srgb,var(--accent) 40%,transparent); }
-.doc ul,.doc ol{ padding-left:1.3em; color:var(--sub); margin:0 0 1em; } .doc li{ margin:.3em 0; } .doc li strong{ color:var(--text); }
-.doc blockquote{ margin:1.2em 0; padding:2px 0 2px 18px; border-left:2px solid var(--accent); color:var(--text); }
-.doc pre{ background:var(--crust); border:1px solid var(--line); border-radius:10px; padding:13px 15px; overflow:auto; margin:0 0 1.2em; }
-.doc code{ font-family:var(--mono); font-size:.85rem; color:var(--text); }
-.doc :not(pre)>code{ background:var(--surf2); padding:.1em .4em; border-radius:5px; font-size:.82em; }
-.doc img{ max-width:100%; height:auto; border:1px solid var(--line); border-radius:10px; margin:.6em 0 1.2em; }
-.doc hr{ border:0; border-top:1px solid var(--line); margin:2em 0; }
+  /* ---------- sections ---------- */
+  .section{max-width:1160px;margin:0 auto;padding:80px 26px}
+  .section-head{border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:40px}
+  .section-head .cmdline{font-family:var(--mono);font-size:13px;color:var(--dim);margin-bottom:10px;display:block}
+  .section-head .cmdline b{color:var(--green);font-weight:500}
+  .section-head h3{
+    font-family:var(--display);font-stretch:112%;font-weight:750;
+    font-size:clamp(26px,3.6vw,38px);text-transform:uppercase;
+    letter-spacing:-.008em;color:var(--head);
+  }
 
-.links{ display:grid; gap:2px; max-width:420px; margin:8px 0 30px; }
-.links a{ font-family:var(--mono); font-size:.86rem; display:flex; gap:12px; align-items:center; padding:11px 12px; border-radius:8px; color:var(--sub); min-height:44px; border:1px solid transparent; transition:.15s; }
-.links a:hover{ background:var(--surf); border-color:var(--line); color:var(--text); }
-.links a .k{ color:var(--muted); min-width:70px; } .links a:hover .v{ color:var(--accent); }
-.certs{ display:grid; gap:10px; max-width:480px; margin:8px 0 30px; }
-.cert{ display:flex; justify-content:space-between; align-items:center; gap:14px; border:1px solid var(--line); border-radius:9px; padding:13px 15px; background:var(--surf); }
-.cert .cn{ font-family:var(--mono); font-size:.86rem; color:var(--text); }
-.cert .cs{ font-family:var(--mono); font-size:.62rem; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); border:1px solid color-mix(in srgb,var(--accent) 40%,transparent); border-radius:20px; padding:3px 10px; white-space:nowrap; }
-.form{ display:grid; gap:13px; max-width:520px; }
-.form label{ font-family:var(--mono); font-size:.72rem; letter-spacing:.06em; color:var(--muted); display:block; margin-bottom:6px; }
-.form input,.form textarea{ width:100%; font-size:1rem; color:var(--text); background:var(--surf); border:1px solid var(--line); border-radius:9px; padding:12px 13px; font-family:var(--sans); }
-.form input:focus,.form textarea:focus{ outline:none; border-color:var(--accent); }
-.form textarea{ min-height:120px; resize:vertical; }
-.row2{ display:grid; gap:13px; grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr)); }
-.hp{ position:absolute; left:-9999px; }
-.statusmsg{ font-family:var(--mono); font-size:.8rem; min-height:1.3em; color:var(--sub); } .statusmsg.ok{ color:var(--good); } .statusmsg.err{ color:var(--danger); }
+  /* ---------- notes (blog) ---------- */
+  .files{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
+  .file{
+    background:var(--panel);
+    border:1px solid var(--panel-edge);border-radius:8px;
+    text-decoration:none;display:flex;flex-direction:column;
+    transition:border-color .25s,transform .25s;overflow:hidden;
+  }
+  .file:hover{border-color:var(--panel-hover);transform:translateY(-3px)}
+  .file-meta{
+    display:flex;align-items:center;gap:10px;
+    font-family:var(--mono);font-size:11.5px;
+    padding:12px 18px;border-bottom:1px solid var(--line);
+    color:var(--dim);background:rgba(190,210,230,.02);
+  }
+  .file-meta .dots{display:flex;gap:5px;margin-right:4px}
+  .file-meta .dots i{width:8px;height:8px;border-radius:50%;background:rgba(190,210,230,.16)}
+  .file-meta .chip{margin-left:auto;padding:3px 9px;border-radius:3px}
+  .chip.draft{background:rgba(203,181,140,.13);color:var(--sand)}
+  .file-body{padding:22px 20px 24px;display:flex;flex-direction:column;gap:11px;flex:1}
+  .file-body h4{
+    font-family:var(--display);font-stretch:108%;font-weight:700;
+    font-size:20px;line-height:1.3;color:var(--head);
+  }
+  .file-body p{font-size:15px;color:var(--dim);flex:1}
+  .file-body .tags{font-family:var(--mono);font-size:11.5px;color:var(--ice)}
+  .file-body .read{font-family:var(--mono);font-size:12.5px;color:var(--green)}
+  .file-body .read::before{content:"$ "}
+  .file:hover .read::after{content:" ▮";animation:blink 1.06s steps(1) infinite}
 
-footer.site{ border-top:1px solid var(--line); background:var(--mantle); padding-block:26px 40px; }
-footer .wrap{ display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap; font-family:var(--mono); font-size:.72rem; color:var(--muted); }
-footer .links2{ display:flex; gap:18px; flex-wrap:wrap; } footer a:hover{ color:var(--accent); }
+  .file.ghost{
+    border-style:dashed;background:transparent;
+    align-items:center;justify-content:center;text-align:center;
+    padding:44px 22px;gap:12px;
+    font-family:var(--mono);font-size:13px;color:var(--dim);
+  }
+  .file.ghost .touch{color:var(--text)}
+  .file.ghost .touch b{color:var(--green);font-weight:500}
+  .file.ghost .cursor{display:inline-block;width:.55em;height:1.05em;background:var(--green);vertical-align:-.15em}
+  .file.ghost:hover{border-color:var(--panel-edge);transform:none}
 
-@media (max-width:640px){ .post{ grid-template-columns:1fr; } .post .state{ order:-1; } }
-@media (max-width:820px){ .plyt{ grid-template-columns:1fr; gap:22px; } .toc{ position:static; order:-1; } }
-@media (prefers-reduced-motion:reduce){ *{ animation:none!important; transition:none!important; } html{ scroll-behavior:auto; } }
+  /* ---------- projects — honest empty state ---------- */
+  .term{
+    background:var(--panel);border:1px solid var(--panel-edge);
+    border-radius:8px;overflow:hidden;
+  }
+  .term-bar{
+    display:flex;align-items:center;gap:10px;
+    padding:11px 16px;border-bottom:1px solid var(--line);
+    font-family:var(--mono);font-size:11.5px;color:var(--dim);
+    background:rgba(190,210,230,.02);
+  }
+  .term-bar .dots{display:flex;gap:6px}
+  .term-bar .dots i{width:9px;height:9px;border-radius:50%;background:rgba(190,210,230,.16)}
+  .term-body{padding:26px}
+  .term-body.console{font-family:var(--mono);font-size:13.5px;line-height:2.1;color:var(--dim)}
+  .term-body.console .in b{color:var(--green);font-weight:500}
+  .term-body.console .out{color:var(--text)}
+  .term-body.console .comment{color:var(--dim)}
+  .term-body.console .comment em{font-style:normal;color:var(--head)}
+
+  /* ---------- whoami ---------- */
+  .whoami{display:grid;grid-template-columns:1.4fr 1fr;gap:20px;align-items:stretch}
+  .term-body .cmd{font-family:var(--mono);font-size:13px;color:var(--dim);margin-bottom:16px}
+  .term-body .cmd b{color:var(--green);font-weight:500}
+  .term-body h4{
+    font-family:var(--display);font-stretch:108%;font-weight:700;
+    font-size:23px;line-height:1.35;color:var(--head);margin-bottom:14px;
+  }
+  .term-body p{font-size:15.5px;color:var(--text);margin-bottom:12px}
+  .term-body p em{font-style:normal;color:var(--green)}
+  .term-body .cta-row{margin-top:22px}
+  .custody .term-body{font-family:var(--mono);font-size:13px}
+  .custody dl{display:grid;grid-template-columns:auto 1fr;gap:13px 22px}
+  .custody dt{color:var(--dim);font-size:11.5px;text-transform:uppercase;letter-spacing:.1em}
+  .custody dd{color:var(--text)}
+  .custody dd a{text-decoration:none}
+  .custody dd a:hover{color:var(--green)}
+  .custody .prog{color:var(--sand)}
+  .custody .open{color:var(--green)}
+
+  /* ---------- footer ---------- */
+  footer{border-top:1px solid var(--line);padding:32px 26px 46px}
+  .foot-inner{
+    max-width:1160px;margin:0 auto;
+    display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:12.5px;color:var(--dim);
+  }
+  .foot-inner a{text-decoration:none;transition:color .2s}
+  .foot-inner a:hover{color:var(--green)}
+  .foot-inner .links{display:flex;gap:22px}
+
+  /* ---------- reveal ---------- */
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.in{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+    .reveal,.hero-main{opacity:1;transform:none}
+    .loader{display:none}
+    html{scroll-behavior:auto}
+  }
+
+  /* ---------- responsive ---------- */
+  @media (max-width:820px){
+    .statusbar nav{display:none}
+    .hero{min-height:78vh;padding-bottom:24px}
+    .whoami{grid-template-columns:1fr}
+    .boot{font-size:12px}
+    .loader-inner{font-size:12px}
+  }
 </style>
 </head>
 <body>
 
-<div class="status"><div class="wrap"><span class="on">online · pursuix.com</span><span class="role">defensive security</span></div></div>
+<!-- terminal loading screen -->
+<div class="loader" id="loader" aria-hidden="true">
+  <div class="loader-inner">
+    <div class="loader-brand">pursuix<em>//</em>ops — secure shell</div>
+    <div class="loader-lines" id="loaderLines"></div>
+    <div class="loader-bar" id="loaderBar"></div>
+    <div class="loader-granted" id="loaderGranted">access granted. welcome to the watch.</div>
+  </div>
+  <div class="loader-skip">click anywhere to skip</div>
+</div>
 
-<header class="site"><div class="wrap">
-  <a class="brand" href="#home"><svg class="mark" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" stroke="currentColor" stroke-opacity=".5" stroke-width="1.6"/><path d="M7 8l3.2 4L7 16" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="12.5" y1="16" x2="17" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="cur" aria-hidden="true"></span>pursuix</a>
-  <nav><ul>
-    <li><a href="#home">home</a></li>
-    <li><a href="#projects">projects</a></li>
-    <li><a href="#blog">blog</a></li>
-    <li><a href="#about">about</a></li>
-  </ul></nav>
-</div></header>
+<header class="statusbar">
+  <span class="brand">pursuix<em>//</em>ops</span>
+  <nav aria-label="Primary">
+    <a href="#notes">notes</a>
+    <a href="#projects">projects</a>
+    <a href="#whoami">whoami</a>
+  </nav>
+  <span class="telemetry">
+    <span><span class="dot" aria-hidden="true"></span>watching</span>
+    <span class="clock" id="utc">--:--:-- UTC</span>
+  </span>
+</header>
 
 <main>
-  <section class="section block active" id="home"><div class="wrap">
-    <span class="eyebrow">// defensive security · blue team</span>
-    <div class="term">
-      <div class="term-bar"><span class="d"></span><span class="d"></span><span class="d"></span><span class="path">~/pursuix</span></div>
-      <div class="term-body">
-        <p class="line"><span class="p">pursuix</span> <span class="o">&rsaquo;</span> whoami</p>
-        <p class="line">blue team in training &mdash; I <strong style="color:var(--text)">defend</strong> systems and write down how I learn to.</p>
-        <p class="line"><span class="p">pursuix</span> <span class="o">&rsaquo;</span> cat ./focus.txt</p>
-        <p class="line"><span id="typed"></span><span class="caret" aria-hidden="true"></span></p>
+  <section class="hero" id="top">
+    <div class="boot" id="boot" aria-hidden="true"></div>
+
+    <div class="hero-main" id="heroMain">
+      <h1 class="wordmark">Pursui<span class="x">x</span><span class="block-cursor" aria-hidden="true"></span></h1>
+
+      <div class="thesis">
+        <h2>ordinary worker by day, <b>blue team researcher</b> by night.</h2>
+        <p>A working record of learning to defend — logs, network traffic, detections, and the write-ups that prove I understood them. The defensive side, in the open.</p>
+        <div class="cta-row">
+          <a class="btn primary" href="#notes">$ open ./notes</a>
+          <a class="btn ghost" href="#whoami">$ whoami</a>
+        </div>
+      </div>
+
+      <div class="logfeed" aria-hidden="true">
+        <span class="cmd"><b>~$</b> tail -f /var/log/watch.log</span>
+        <div id="feed"></div>
       </div>
     </div>
-    <h1 class="big">Ordinary worker by day,<br><span class="a">blue team researcher</span> by night.</h1>
-    <p class="lede">A working record of learning to <strong style="color:var(--text)">defend</strong> &mdash; logs, network traffic, detections, and the write-ups that prove I understood them. The defensive side, in the open.</p>
-    <div class="latest" id="latest" hidden>
-      <span class="eyebrow">latest notes</span>
-      <div id="latest-list"></div>
-    </div>
-    <div class="cta">
-      <a class="btn go" href="#blog">view all writing &rarr;</a>
-      <a class="btn" href="#about">get in touch</a>
-    </div>
-  </div></section>
+  </section>
 
-  <section class="section block" id="projects"><div class="wrap">
-    <span class="eyebrow">/projects</span>
-    <h1 class="big">Projects</h1>
-    <div class="empty">
-      <span class="tag">nothing shipped yet</span>
-      <h3>Building toward it.</h3>
-      <p>Detection rules, lab write-ups, and small defensive tools will land here &mdash; real ones only, once they exist. No placeholders pretending to be a portfolio.</p>
+  <section class="section" id="notes">
+    <div class="section-head reveal">
+      <span class="cmdline"><b>~$</b> ls ./notes --sort=recent</span>
+      <h3>Notes &amp; research</h3>
     </div>
-  </div></section>
-
-  <section class="section block" id="blog"><div class="wrap">
-    <span class="eyebrow">/blog · notes &amp; research</span>
-    <h1 class="big">Notes &amp; <span class="a">research.</span></h1>
-    <p class="lede">What I'm figuring out on the defensive side &mdash; reading traffic, triaging alerts, and turning it into detections. Written as I go.</p>
-    <div id="blog-list" style="margin-top:24px"></div>
-  </div></section>
-
-  <section class="section block" id="post"><div class="wrap">
-    <button class="back" id="post-back">&larr; back to writing</button>
-    <div class="posthead">
-      <h1 id="post-title"></h1>
-      <p class="pm" id="post-meta"></p>
-    </div>
-    <div class="plyt" id="post-layout">
-      <article class="doc" id="post-article"></article>
-      <aside class="toc" id="post-toc"><h3>Contents</h3><ol></ol></aside>
-    </div>
-  </div></section>
-
-  <section class="section block" id="about"><div class="wrap">
-    <span class="eyebrow">/about</span>
-    <h1 class="big">About</h1>
-    <p>I study the <strong style="color:var(--text)">defensive</strong> side of security &mdash; going deeper into how to <strong style="color:var(--text)">detect, prevent, and contain</strong> threats. Everything here is me learning in the open, with the writing as the proof.</p>
-
-    <span class="eyebrow" style="margin-top:18px">certifications · on the way</span>
-    <div class="certs">
-      <div class="cert"><span class="cn">CompTIA Security+ (SY0-701)</span><span class="cs">in progress</span></div>
-      <div class="cert"><span class="cn">BTL1 &mdash; Blue Team Level 1</span><span class="cs">planned</span></div>
-    </div>
-
-    <span class="eyebrow">elsewhere</span>
-    <div class="links">
-      <a href="https://github.com/marweentimbreza" target="_blank" rel="noopener"><span class="k">github</span><span class="v">github.com/marweentimbreza</span></a>
-      <a href="https://x.com/timbrezadev" target="_blank" rel="noopener"><span class="k">x</span><span class="v">x.com/timbrezadev</span></a>
-    </div>
-
-    <span class="eyebrow">get in touch</span>
-    <h2 style="font-family:var(--mono);font-weight:600;margin:.5em 0 .3em">Say hello</h2>
-    <p>Want to know more, or compare notes? Drop a line.</p>
-    <form class="form" id="cf" action="https://api.web3forms.com/submit" method="POST">
-      <input type="hidden" name="access_key" value="c409fc48-eb59-46f6-b9b2-f7be7d72ee21">
-      <input type="hidden" name="subject" value="New message from pursuix.com">
-      <input type="checkbox" name="botcheck" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
-      <div class="row2">
-        <div><label>name</label><input type="text" name="name" required placeholder="Your name"></div>
-        <div><label>email</label><input type="email" name="email" required placeholder="you@somewhere.com"></div>
+    <div class="files">
+      <a class="file reveal" href="#">
+        <div class="file-meta">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span>note-001.md</span>
+          <span class="chip draft">draft · updating</span>
+        </div>
+        <div class="file-body">
+          <h4>Understanding network traffic</h4>
+          <p>What's actually moving across the wire, and how to read it — from a capture to a first detection idea.</p>
+          <span class="tags">#networking &nbsp;#pcap &nbsp;#blue-team</span>
+          <span class="read">cat note-001.md</span>
+        </div>
+      </a>
+      <div class="file ghost reveal" aria-hidden="true">
+        <span class="touch"><b>~$</b> touch note-002.md<span class="cursor"></span></span>
+        <span>more notes land here as I publish.</span>
       </div>
-      <div><label>message</label><textarea name="message" required placeholder="What's on your mind?"></textarea></div>
-      <button class="btn go" type="submit">send message &rarr;</button>
-      <p class="statusmsg" id="sm" role="status" aria-live="polite"></p>
-    </form>
-  </div></section>
+    </div>
+  </section>
+
+  <section class="section" id="projects">
+    <div class="section-head reveal">
+      <span class="cmdline"><b>~$</b> ls ./projects --status</span>
+      <h3>Projects</h3>
+    </div>
+    <div class="term reveal">
+      <div class="term-bar">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span>projects — bash</span>
+      </div>
+      <div class="term-body console">
+        <span class="in"><b>~$</b> ls ./projects</span><br>
+        <span class="out">total 0</span><br>
+        <span class="comment"># nothing shipped yet — <em>building toward it.</em></span><br>
+        <span class="comment"># detection rules, lab write-ups, and small defensive tools will land</span><br>
+        <span class="comment"># here once they're real. no placeholders pretending to be a portfolio.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="whoami">
+    <div class="section-head reveal">
+      <span class="cmdline"><b>~$</b> whoami &amp;&amp; cat ./focus.txt</span>
+      <h3>Whoami</h3>
+    </div>
+    <div class="whoami">
+      <div class="term reveal">
+        <div class="term-bar">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span>analyst — bash</span>
+        </div>
+        <div class="term-body">
+          <p class="cmd"><b>~$</b> cat ./focus.txt</p>
+          <h4>Blue team in training — I <em>defend</em> systems and write down how I learn to.</h4>
+          <p>I study the defensive side of security — going deeper into how to <em>detect, prevent, and contain</em> threats. Everything here is me learning in the open, with the writing as the proof.</p>
+          <p>Want to know more, or compare notes? Drop a line.</p>
+          <div class="cta-row">
+            <a class="btn primary" href="#">$ say hello →</a>
+          </div>
+        </div>
+      </div>
+      <div class="term custody reveal">
+        <div class="term-bar">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span>chain-of-custody</span>
+        </div>
+        <div class="term-body">
+          <dl>
+            <dt>handle</dt><dd>pursuix</dd>
+            <dt>mode</dt><dd>blue team in training</dd>
+            <dt>focus</dt><dd>logs, traffic, detections</dd>
+            <dt>certs</dt><dd><span class="prog">Security+ SY0-701 — in progress</span><br>BTL1 — planned</dd>
+            <dt>code</dt><dd><a href="https://github.com/marweentimbreza">github.com/marweentimbreza</a></dd>
+            <dt>x</dt><dd><a href="https://x.com/timbrezadev">x.com/timbrezadev</a></dd>
+            <dt>status</dt><dd class="open">learning in the open</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </section>
 </main>
 
-<footer class="site"><div class="wrap">
-  <span>&copy; <span id="yr"></span> pursuix &middot; all rights reserved</span>
-  <span class="links2">
-    <a href="https://github.com/marweentimbreza" target="_blank" rel="noopener">github</a>
-    <a href="https://x.com/timbrezadev" target="_blank" rel="noopener">x</a>
-  </span>
-</div></footer>
+<footer>
+  <div class="foot-inner">
+    <span>signed off — <span id="utc-foot">--:--</span> UTC · no incident to report</span>
+    <span class="links">
+      <a href="https://github.com/marweentimbreza">github</a>
+      <a href="https://x.com/timbrezadev">x</a>
+      <a href="#top">cd ~</a>
+    </span>
+  </div>
+</footer>
 
 <script>
-const $ = s => document.querySelector(s);
-const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-$('#yr').textContent = new Date().getFullYear();
+  var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function p(n){return String(n).padStart(2,'0')}
+  function utcNow(){var d=new Date();return p(d.getUTCHours())+':'+p(d.getUTCMinutes())+':'+p(d.getUTCSeconds())}
 
-const slugify = t => t.toLowerCase().trim().replace(/[^\w\s-]/g,'').replace(/[\s_-]+/g,'-').replace(/^-+|-+$/g,'');
-const fmtDate = iso => { const d = new Date(iso+'T00:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}); };
-const esc = s => s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-
-let posts = [];
-let currentSlug = null;
-const ready = fetch('posts.json',{cache:'no-store'})
-  .then(r => r.ok ? r.json() : [])
-  .then(d => { posts = (Array.isArray(d)?d:[]).filter(p=>p.status!=='draft').sort((a,b)=>(b.date||'').localeCompare(a.date||'')); })
-  .catch(() => { posts = null; });
-
-function card(p, idx){
-  const read = p.readingTime ? p.readingTime+' min read' : '';
-  const tags = (p.tags||[]).map(t=>'<span>#'+esc(t)+'</span>').join('');
-  const num = String((posts.length-idx)).padStart(2,'0');
-  return `<a class="post" href="#post/${esc(p.slug)}">
-    <span class="meta">${num} &middot; ${esc(fmtDate(p.date))}<br>${read}</span>
-    <span><h2>${esc(p.title)}</h2><span class="ex">${esc(p.excerpt||'')}</span><span class="tags">${tags}</span></span>
-    <span class="state">read &rarr;</span></a>`;
-}
-
-function renderList(){
-  const list = $('#blog-list'), latest = $('#latest');
-  if(posts === null){ list.innerHTML = '<p class="morenote">Couldn\'t load posts. If you opened this file directly, run a local server (see the studio) — it works once deployed.</p>'; return; }
-  if(!posts.length){ list.innerHTML = '<p class="morenote">More notes land here as I publish.</p>'; latest.hidden = true; return; }
-  list.innerHTML = posts.map(card).join('');
-  $('#latest-list').innerHTML = card(posts[0], 0);
-  latest.hidden = false;
-}
-
-async function openPost(slug){
-  currentSlug = slug;
-  const meta = (posts||[]).find(p => p.slug === slug);
-  const art = $('#post-article'), toc = $('#post-toc'), layout = $('#post-layout');
-  $('#post-title').textContent = meta ? meta.title : slug;
-  if(!meta){ art.innerHTML = '<p>That post isn\'t in the index.</p>'; $('#post-meta').textContent=''; toc.hidden=true; layout.classList.add('solo'); return; }
-  $('#post-meta').innerHTML = `${esc(fmtDate(meta.date))}${meta.readingTime?' &nbsp;•&nbsp; '+meta.readingTime+' min read':''}`;
-  art.innerHTML = '<p style="color:var(--muted)">loading…</p>';
-  try{
-    const r = await fetch('posts/'+slug+'.html',{cache:'no-store'});
-    if(!r.ok) throw 0;
-    art.innerHTML = await r.text();
-  }catch(e){ art.innerHTML = '<p>Couldn\'t load this post.</p>'; toc.hidden=true; layout.classList.add('solo'); return; }
-  const heads = [...art.querySelectorAll('h2')];
-  if(heads.length){
-    const ol = toc.querySelector('ol'); ol.innerHTML='';
-    heads.forEach(h=>{ const id = slugify(h.textContent)||('s'+Math.random().toString(36).slice(2,6)); h.id=id;
-      ol.insertAdjacentHTML('beforeend', `<li><a href="#post/${esc(slug)}/${id}">${esc(h.textContent)}</a></li>`); });
-    toc.hidden=false; layout.classList.remove('solo');
-  } else { toc.hidden=true; layout.classList.add('solo'); }
-}
-
-const sections = ['home','projects','blog','about'];
-function show(id){
-  document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active', s.id===id));
-  const navTarget = id==='post' ? 'blog' : id;
-  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('active', a.getAttribute('href')==='#'+navTarget));
-}
-
-async function route(){
-  const h = location.hash.slice(1);
-  if(h.startsWith('post/')){
-    await ready;
-    const parts = h.split('/'); const slug = parts[1]; const anchor = parts[2];
-    if(slug !== currentSlug) await openPost(slug);
-    show('post');
-    if(anchor){ const el=document.getElementById(anchor); if(el){ el.scrollIntoView(); return; } }
-    window.scrollTo(0,0);
-    return;
+  /* ---------- live UTC clock ---------- */
+  function tick(){
+    var t=utcNow();
+    var el=document.getElementById('utc'),ef=document.getElementById('utc-foot');
+    if(el)el.textContent=t+' UTC';
+    if(ef)ef.textContent=t.slice(0,5);
   }
-  const id = sections.includes(h) ? h : 'home';
-  show(id); window.scrollTo(0,0);
-  if(id==='home') runTyped();
-}
-addEventListener('hashchange', route);
+  tick();setInterval(tick,1000);
 
-$('#post-back').addEventListener('click', ()=>{ location.hash = '#blog'; });
+  /* ---------- generic line typer ---------- */
+  function typeLines(container,lines,speed,gap,done){
+    var li=0;
+    function next(){
+      if(li>=lines.length){if(done)done();return}
+      var l=lines[li];
+      var s=document.createElement('span');s.className='line';container.appendChild(s);
+      var ci=0;
+      var iv=setInterval(function(){
+        ci++;
+        s.textContent=l.text.slice(0,ci);
+        if(ci>=l.text.length){
+          clearInterval(iv);
+          s.innerHTML=l.html;
+          li++;setTimeout(next,gap);
+        }
+      },speed);
+    }
+    next();
+  }
 
-const typedEl = $('#typed');
-const msg = 'DFIR · detection engineering · SOC — the defensive side.';
-function runTyped(){ if(!typedEl) return; if(reduce){ typedEl.textContent=msg; return; }
-  typedEl.textContent=''; let i=0; (function step(){ if(i<=msg.length){ typedEl.textContent=msg.slice(0,i++); setTimeout(step,26); } })(); }
+  /* ---------- terminal loading screen (~2.6s, click to skip) ---------- */
+  var loader=document.getElementById('loader');
+  var loaderDismissed=false;
 
-const cf = $('#cf'), sm = $('#sm');
-cf.addEventListener('submit', e=>{ e.preventDefault();
-  if(cf.querySelector('[name=access_key]').value.startsWith('YOUR-')){ sm.textContent='Form not wired yet — add your Web3Forms access key.'; sm.className='statusmsg err'; return; }
-  sm.textContent='sending…'; sm.className='statusmsg';
-  fetch(cf.action,{method:'POST',body:new FormData(cf),headers:{Accept:'application/json'}})
-    .then(r=>r.json().then(d=>({ok:r.ok,d}))).then(res=>{
-      if(res.ok){ sm.textContent='Sent. I\'ll get back to you.'; sm.className='statusmsg ok'; cf.reset(); }
-      else { sm.textContent=(res.d&&res.d.message)||'Something went wrong.'; sm.className='statusmsg err'; }
-    }).catch(()=>{ sm.textContent='Network error — try again.'; sm.className='statusmsg err'; });
-});
+  function dismissLoader(){
+    if(loaderDismissed)return;
+    loaderDismissed=true;
+    loader.classList.add('done');
+    setTimeout(startPage,300);
+  }
 
-ready.then(renderList).then(route);
+  if(reduce){
+    // reduced motion: no loading theater, straight to content
+    loaderDismissed=true;
+    startPageInstant();
+  }else{
+    loader.addEventListener('click',dismissLoader);
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')dismissLoader()});
+
+    // typed check lines
+    var loadLines=[
+      {html:'&gt; establishing secure session … <span class="ok">ok</span>',text:'> establishing secure session … ok'},
+      {html:'&gt; mounting <span class="val">~/pursuix</span> … <span class="ok">ok</span>',text:'> mounting ~/pursuix … ok'},
+      {html:'&gt; starting the watch … <span class="ok">ok</span>',text:'> starting the watch … ok'}
+    ];
+    typeLines(document.getElementById('loaderLines'),loadLines,11,140,null);
+
+    // ascii progress bar — organic, non-linear fill over ~2.2s
+    var bar=document.getElementById('loaderBar');
+    var cells=24,prog=0;
+    function drawBar(){
+      var f=Math.round(prog/100*cells);
+      bar.innerHTML='[<span class="fill">'+'█'.repeat(f)+'</span>'+'░'.repeat(cells-f)+'] '+Math.floor(prog)+'%';
+    }
+    drawBar();
+    var barIv=setInterval(function(){
+      if(loaderDismissed){clearInterval(barIv);return}
+      // stall briefly around the middle for authenticity, then push on
+      var step=(prog>52&&prog<60)?(Math.random()*1.5):(3+Math.random()*7);
+      prog=Math.min(100,prog+step);
+      drawBar();
+      if(prog>=100){
+        clearInterval(barIv);
+        document.getElementById('loaderGranted').classList.add('show');
+        setTimeout(dismissLoader,420);
+      }
+    },95);
+  }
+
+  /* ---------- hero boot sequence (runs after the loader) ---------- */
+  var bootLines=[
+    {html:'<span class="prompt">pursuix@ops:~$</span> ./init --shift night',text:'pursuix@ops:~$ ./init --shift night'},
+    {html:'[ <span class="ok">ok</span> ] loading notes … <span class="val">1 draft, more inbound</span>',text:'[ ok ] loading notes … 1 draft, more inbound'},
+    {html:'[ <span class="ok">ok</span> ] sensors online … <span class="val">all quiet</span>',text:'[ ok ] sensors online … all quiet'}
+  ];
+  var boot=document.getElementById('boot');
+  var heroMain=document.getElementById('heroMain');
+  var pageStarted=false;
+
+  function startPage(){
+    if(pageStarted)return;pageStarted=true;
+    typeLines(boot,bootLines,14,200,function(){
+      setTimeout(function(){heroMain.classList.add('on')},200);
+    });
+  }
+  function startPageInstant(){
+    if(pageStarted)return;pageStarted=true;
+    bootLines.forEach(function(l){
+      var s=document.createElement('span');s.className='line';s.innerHTML=l.html;boot.appendChild(s);
+    });
+    heroMain.classList.add('on');
+  }
+
+  /* ---------- ambient log feed ---------- */
+  var feed=document.getElementById('feed');
+  var feedMsgs=[
+    'heartbeat ok · 0 alerts in queue',
+    'reading the wire · packets, not vibes',
+    'study session active · security+ prep',
+    'auth watch: no anomalies in last window',
+    'draft note-001 open · words landing slowly',
+    'perimeter quiet · logging continues',
+    'nothing gets past the watch'
+  ];
+  var fi=0;
+  function pushLog(){
+    var e=document.createElement('span');
+    e.className='entry';
+    e.innerHTML='<span class="t">['+utcNow()+']</span> '+feedMsgs[fi%feedMsgs.length];
+    fi++;
+    feed.insertBefore(e,feed.firstChild);
+    requestAnimationFrame(function(){requestAnimationFrame(function(){e.classList.add('show')})});
+    var entries=feed.querySelectorAll('.entry');
+    entries.forEach(function(el,i){el.classList.toggle('old',i>0)});
+    while(feed.children.length>3)feed.removeChild(feed.lastChild);
+  }
+  pushLog();
+  if(!reduce)setInterval(pushLog,4200);
+
+  /* ---------- scroll reveals ---------- */
+  var items=document.querySelectorAll('.reveal');
+  if(reduce||!('IntersectionObserver' in window)){
+    items.forEach(function(el){el.classList.add('in')});
+  }else{
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}
+      });
+    },{threshold:.12});
+    items.forEach(function(el){io.observe(el)});
+  }
 </script>
 </body>
 </html>
