@@ -1,0 +1,52 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+
+const notes = (await getCollection('notes')).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+
+function fmt(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+---
+<Layout
+  title="blog — pursuix"
+  description="Notes & research — what I'm figuring out on the defensive side: reading traffic, triaging alerts, and turning it into detections. Written as I go."
+>
+  <main>
+    <section class="section">
+      <div class="section-head reveal">
+        <span class="cmdline"><b>~$</b> ls ./blog --sort=recent</span>
+        <h3>Notes &amp; research</h3>
+      </div>
+      <p class="reveal" style="max-width:640px;color:var(--dim);margin:-14px 0 40px">
+        What I'm figuring out on the defensive side — reading traffic, triaging alerts,
+        and turning it into detections. Written as I go.
+      </p>
+      <div class="files">
+        {notes.map((note, i) => (
+          <a class="file reveal" href={`/blog/${note.id}/`}>
+            <div class="file-meta">
+              <span class="dots"><i></i><i></i><i></i></span>
+              <span>note-{String(notes.length - i).padStart(3, '0')}.md</span>
+              {note.data.draft
+                ? <span class="chip draft">draft · updating</span>
+                : <span class="chip published">{fmt(note.data.date)}</span>}
+            </div>
+            <div class="file-body">
+              <h4>{note.data.title}</h4>
+              <p>{note.data.description}</p>
+              <span class="tags">{note.data.tags.map((t) => `#${t}`).join('  ')}</span>
+              <span class="read">cat {note.id}.md</span>
+            </div>
+          </a>
+        ))}
+        <div class="file ghost reveal" aria-hidden="true">
+          <span class="touch"><b>~$</b> touch note-{String(notes.length + 1).padStart(3, '0')}.md<span class="cursor"></span></span>
+          <span>more notes land here as I publish.</span>
+        </div>
+      </div>
+    </section>
+  </main>
+</Layout>

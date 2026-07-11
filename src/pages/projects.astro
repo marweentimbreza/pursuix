@@ -1,0 +1,36 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout
+  title="projects — pursuix"
+  description="Defensive tools and lab builds — real ones only, once they exist. No placeholders pretending to be a portfolio."
+>
+  <main>
+    <section class="section">
+      <div class="section-head reveal">
+        <span class="cmdline"><b>~$</b> ls ./projects --status</span>
+        <h3>Projects</h3>
+      </div>
+      <div class="term reveal">
+        <div class="term-bar">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span>projects — bash</span>
+        </div>
+        <div class="term-body console">
+          <span class="in"><b>~$</b> ls ./projects</span><br />
+          <span class="out">total 0</span><br />
+          <span class="comment"># nothing shipped yet — <em>building toward it.</em></span><br />
+          <span class="comment"># detection rules, lab write-ups, and small defensive tools will land</span><br />
+          <span class="comment"># here once they're real. no placeholders pretending to be a portfolio.</span><br />
+          <span class="in"><b>~$</b> cat ./roadmap.txt</span><br />
+          <span class="comment"># → home lab: capture, detect, document — the write-ups feed <a href="/blog/" style="color:var(--green)">./blog</a></span><br />
+          <span class="comment"># → first detections: sysmon + network rules, tuned and explained</span><br />
+          <span class="comment"># → small tools: whatever the lab work proves I actually need</span>
+        </div>
+      </div>
+      <div class="more-row reveal">
+        <a class="btn ghost" href="/blog/">meanwhile, the writing is real →</a>
+      </div>
+    </section>
+  </main>
+</Layout>

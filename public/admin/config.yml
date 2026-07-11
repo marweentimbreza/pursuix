@@ -1,0 +1,28 @@
+backend:
+  name: github
+  # ── CHANGE ME (1/2): your GitHub username/repo ──
+  repo: marweentimbreza/YOUR-REPO-NAME
+  branch: main
+  # ── CHANGE ME (2/2): your deployed sveltia-cms-auth Worker URL ──
+  base_url: https://YOUR-AUTH-WORKER.YOUR-SUBDOMAIN.workers.dev
+
+site_url: https://pursuix.com
+
+media_folder: public/uploads
+public_folder: /uploads
+
+collections:
+  - name: notes
+    label: Notes & Research
+    label_singular: Note
+    folder: src/content/notes
+    create: true
+    slug: '{{slug}}'
+    summary: '{{title}} — {{date | date("YYYY-MM-DD")}}'
+    fields:
+      - { name: title, label: Title, widget: string }
+      - { name: description, label: One-line description, widget: string, required: false }
+      - { name: date, label: Date, widget: datetime, format: 'YYYY-MM-DD', time_format: false }
+      - { name: tags, label: Tags, widget: list, default: [blue-team], required: false }
+      - { name: draft, label: Draft, widget: boolean, default: true, hint: 'Drafts still publish to the site with a draft badge — matching the learning-in-the-open ethos. Flip off when a note is done.' }
+      - { name: body, label: Body, widget: markdown }

@@ -1,0 +1,88 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'pursuix — defensive security',
+  description = 'A working record of learning to defend — logs, network traffic, detections, and the write-ups that prove I understood them.',
+} = Astro.props;
+
+const path = Astro.url.pathname;
+const isActive = (p: string) => path === p || path === p + '/' || path.startsWith(p + '/');
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=JetBrains+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+<header class="statusbar">
+  <span class="brand"><a href="/" style="text-decoration:none">pursuix<em>//</em>ops</a></span>
+  <nav aria-label="Primary">
+    <a href="/blog/" class={isActive('/blog') ? 'active' : ''}>blog</a>
+    <a href="/projects/" class={isActive('/projects') ? 'active' : ''}>projects</a>
+    <a href="/about/" class={isActive('/about') ? 'active' : ''}>about</a>
+    <a href="/contact/" class={isActive('/contact') ? 'active' : ''}>contact</a>
+  </nav>
+  <span class="telemetry">
+    <span><span class="dot" aria-hidden="true"></span>watching</span>
+    <span class="clock" id="utc">--:--:-- UTC</span>
+  </span>
+</header>
+
+<slot />
+
+<footer>
+  <div class="foot-inner">
+    <span>signed off — <span id="utc-foot">--:--</span> UTC · no incident to report</span>
+    <span class="links">
+      <a href="https://github.com/marweentimbreza">github</a>
+      <a href="https://x.com/timbrezadev">x</a>
+      <a href="/">cd ~</a>
+    </span>
+  </div>
+</footer>
+
+<script is:inline>
+  (function(){
+    /* live UTC clock */
+    function p(n){return String(n).padStart(2,'0')}
+    function tick(){
+      var d=new Date();
+      var t=p(d.getUTCHours())+':'+p(d.getUTCMinutes())+':'+p(d.getUTCSeconds());
+      var el=document.getElementById('utc'),ef=document.getElementById('utc-foot');
+      if(el)el.textContent=t+' UTC';
+      if(ef)ef.textContent=t.slice(0,5);
+    }
+    tick();setInterval(tick,1000);
+
+    /* scroll reveals — shared by every page */
+    var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var items=document.querySelectorAll('.reveal');
+    if(reduce||!('IntersectionObserver' in window)){
+      items.forEach(function(el){el.classList.add('in')});
+    }else{
+      var io=new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}
+        });
+      },{threshold:.12});
+      items.forEach(function(el){io.observe(el)});
+    }
+  })();
+</script>
+
+</body>
+</html>
