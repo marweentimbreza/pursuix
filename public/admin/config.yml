@@ -4,7 +4,7 @@ backend:
   repo: marweentimbreza/YOUR-REPO-NAME
   branch: main
   # ── CHANGE ME (2/2): your deployed sveltia-cms-auth Worker URL ──
-  base_url: https://YOUR-AUTH-WORKER.YOUR-SUBDOMAIN.workers.dev
+  base_url: https://sveltia-cms-auth.psycho225b.workers.dev
 
 site_url: https://pursuix.com
 
