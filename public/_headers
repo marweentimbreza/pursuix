@@ -1,17 +1,10 @@
-# Security headers for every response (Cloudflare Pages reads this file).
-# Test after deploy: https://securityheaders.com
-
 /*
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains
-  Content-Security-Policy: default-src 'self' https: data: blob: 'unsafe-inline'; frame-ancestors 'none'; base-uri 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://static.cloudflareinsights.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.githubusercontent.com; connect-src 'self' blob: https://api.github.com https://raw.githubusercontent.com https://*.workers.dev https://cloudflareinsights.com https://api.web3forms.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://api.web3forms.com
 
-# The admin needs a looser policy: the Sveltia script comes from unpkg, and the
-# app talks to GitHub's API and your auth Worker. Everything else stays locked.
 /admin/*
-  X-Frame-Options: DENY
   X-Robots-Tag: noindex, nofollow
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.githubusercontent.com; connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://*.workers.dev; frame-ancestors 'none'; base-uri 'self'
