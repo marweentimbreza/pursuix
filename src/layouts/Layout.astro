@@ -60,11 +60,12 @@ const isActive = (p: string) => path === p || path === p + '/' || path.startsWit
     /* live UTC clock */
     function p(n){return String(n).padStart(2,'0')}
     function tick(){
-      var d=new Date();
-      var t=p(d.getUTCHours())+':'+p(d.getUTCMinutes())+':'+p(d.getUTCSeconds());
-      var el=document.getElementById('utc'),ef=document.getElementById('utc-foot');
-      if(el)el.textContent=t+' UTC';
-      if(ef)ef.textContent=t.slice(0,5);
+    var d=new Date();
+    var utc=p(d.getUTCHours())+':'+p(d.getUTCMinutes())+':'+p(d.getUTCSeconds());
+    var loc=p((d.getUTCHours()+8)%24)+':'+p(d.getUTCMinutes());
+    var el=document.getElementById('utc'),ef=document.getElementById('utc-foot');
+    if(el)el.textContent=utc+' UTC · '+loc+' +8';
+    if(ef)ef.textContent=utc.slice(0,5);
     }
     tick();setInterval(tick,1000);
 
